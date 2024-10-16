@@ -1,0 +1,137 @@
+select
+sub1.*
+,SUB2.DOWNLOAD_SPEED_KBPS 
+,SUB2.UPLOAD_SPEED_KBPS 
+ ,SUB2.MAX_DOWNLOAD_SPEED_KBPS
+ ,SUB2.MAX_UPLOAD_SPEED_KBPS
+ ,SUB2.AVG_DOWNLOAD_SPEED_Mb
+ ,SUB2.MIN_DOWNLOAD_SPEED_Mb
+ ,SUB2.MAX_DOWNLOAD_SPEED_Mb
+ ,SUB2.AVG_UPLOAD_SPEED_Mb
+ ,SUB2.MIN_UPLOAD_SPEED_Mb
+ ,SUB2.MAX_UPLOAD_SPEED_Mb
+ ,SUB2.DATA_RATE_THRESHOLD
+FROM 
+(
+
+	SELECT
+	DISTINCT 
+	      BID PHONE_NUMBER,
+	      ACCOUNTNUMBER,
+	      SERVICEADDRESS1,
+	      SERVICEADDRESS2,
+	      SERVICEADDRESS3,
+	      SERVICEADDRESS4,
+	      CITY,
+	      PRODUCTNAME AS BILL_PRODUCT,
+	      C.SERVICE_NAME AS HARDWARE_PRODUCT,
+	      C.EXCHANGE,
+	      SUB.AVG_SYNC_RATE_Mb,
+	      SUB.MIN_SYNC_RATE_Mb,
+	      SUB.MAX_SYNC_RATE_Mb,
+	      CASE WHEN  C.SERVICE_NAME like '%BRONZE%'AND  avg(D.sync_value)/1500 < 0.9 THEN 'Failure'
+	       WHEN  C.SERVICE_NAME like '%SILVER%' AND avg(D.sync_value)/5000 < 0.9 THEN 'Failure'
+	       WHEN  C.SERVICE_NAME like '%GOLD%' AND avg(D.sync_value)/10000 < 0.9 THEN 'Failure'
+	      
+	       WHEN  C.SERVICE_NAME like '%BRONZE%' AND SUB.MIN_SYNC_RATE_Mb/1.5 < 0.6 THEN 'Failure'
+	       WHEN  C.SERVICE_NAME like '%SILVER%' AND SUB.MIN_SYNC_RATE_Mb/5 < 0.6 THEN 'Failure'
+	       WHEN  C.SERVICE_NAME like '%GOLD%' AND SUB.MIN_SYNC_RATE_Mb/10 < 0.6 THEN 'Failure'
+	      
+	       WHEN  C.SERVICE_NAME like '%BRONZE%' AND avg(D.sync_value)/1500 > 1 THEN 'Pass'
+	       WHEN  C.SERVICE_NAME like '%SILVER%' AND avg(D.sync_value)/5000 > 1  THEN 'Pass'
+	       WHEN  C.SERVICE_NAME like '%GOLD%' AND avg(D.sync_value)/10000 > 1 THEN 'Pass'
+	      
+	      ELSE 
+	            'UNDEFINED'
+	     END THRESHOLD,
+	      round(avg(D.sync_value) /1000, 2) daily_avg_sync_rate_Mb
+	
+	FROM
+	SC_INPUT.ODSSUBSCRIBERSNAPSHOT A
+	INNER JOIN SC_OUTPUT.DIMPRODUCT B ON
+	A.RATEPLANCODE::STRING = B.PRODUCTCODE
+	AND B.LEAFLEVELNAME = 'DSL'
+	AND B.SOURCESYSTEMID = 1
+	AND B.REVENUECOUNTABLE = 1
+	LEFT JOIN ATNI_PROD.GTT_REPORTING.DSL_DUMPS_DNS_RAW C ON 
+	   A.BID = concat('592',C.PHONE_NUMBER)
+	LEFT JOIN ATNI_PROD.GTT_REPORTING.GTT_DSL_SYNC_RATE D ON 
+	      A.BID = concat('592',replace(D.phone_number, '-',''))
+	LEFT JOIN 
+	              (SELECT 
+	                  concat('592',replace(phone_number, '-','')) PHONE_NUMBER,
+	                  round(avg(sync_value) /1000,2) AVG_SYNC_RATE_Mb,
+	                  round(min(sync_value)/1000,2) MIN_SYNC_RATE_Mb,
+	                  round(max(sync_value) /1000, 2) MAX_SYNC_RATE_Mb
+	            FROM 
+	                  ATNI_PROD.GTT_REPORTING.GTT_DSL_SYNC_RATE A 
+	            WHERE
+	                  date(created_date) BETWEEN dateadd(day, -7, CURRENT_DATE() ) AND date(current_date) 
+	      
+	            GROUP BY 1) sub
+	         ON A.BID = sub.PHONE_NUMBER
+	WHERE
+	A.SOURCESYSTEMID = 1
+	AND A.DATESTART = current_Date()-1
+	AND date(D.created_date) = current_Date()
+	AND A.STATUSCODE IN('A', 'S')
+	AND A.CUSTOMERTYPE NOT IN(12, 8)
+	--IGNORE COMPANY AND TEST,
+	GROUP BY 
+	      1,2,3,4,5,6,7,8,9,10,11,12, 13
+)sub1
+JOIN 
+(
+SELECT 
+ 
+ concat('592',replace(CCT_ID, '-','')) PHONE_NUMBER
+ ,B.DOWNLOAD_SPEED_KBPS 
+ ,B.UPLOAD_SPEED_KBPS 
+ ,B.MAX_DOWNLOAD_SPEED_KBPS
+ ,B.MAX_UPLOAD_SPEED_KBPS
+ ,SUB.AVG_DOWNLOAD_SPEED_Mb
+ ,SUB.MIN_DOWNLOAD_SPEED_Mb
+ ,SUB.MAX_DOWNLOAD_SPEED_Mb
+ ,SUB.AVG_UPLOAD_SPEED_Mb
+ ,SUB.MIN_UPLOAD_SPEED_Mb
+ ,SUB.MAX_UPLOAD_SPEED_Mb
+ ,CASE WHEN SERVICE_NAME like '%BRONZE%' AND (B.MAX_DOWNLOAD_SPEED_KBPS)/1500 < 0.9 THEN 'Failure'
+       WHEN  SERVICE_NAME like '%SILVER%' AND (B.MAX_DOWNLOAD_SPEED_KBPS)/5000 < 0.9 THEN 'Failure'
+       WHEN  SERVICE_NAME like '%GOLD%' AND (B.MAX_DOWNLOAD_SPEED_KBPS)/10000 < 0.9 THEN 'Failure'
+      
+       WHEN  SERVICE_NAME like '%BRONZE%' AND SUB.MIN_DOWNLOAD_SPEED_Mb/1.5 < 0.6 THEN 'Failure'
+       WHEN  SERVICE_NAME like '%SILVER%' AND SUB.MIN_DOWNLOAD_SPEED_Mb/5 < 0.6 THEN 'Failure'
+       WHEN  SERVICE_NAME like '%GOLD%' AND SUB.MIN_DOWNLOAD_SPEED_Mb/10 < 0.6 THEN 'Failure'
+      
+       WHEN  SERVICE_NAME like '%BRONZE%' AND (B.MAX_DOWNLOAD_SPEED_KBPS)/1500 > 1 THEN 'Pass'
+       WHEN  SERVICE_NAME like '%SILVER%' AND (B.MAX_DOWNLOAD_SPEED_KBPS)/5000 > 1  THEN 'Pass'
+       WHEN  SERVICE_NAME like '%GOLD%' AND (B.MAX_DOWNLOAD_SPEED_KBPS)/10000 > 1 THEN 'Pass'
+      
+      ELSE 
+            'UNDEFINED'
+     END DATA_RATE_THRESHOLD
+
+ FROM 
+ 	ATNI_PROD.GTT_REPORTING.GTT_DSL_DATA_RATE B
+    LEFT JOIN 
+       (SELECT 
+ 
+		 concat('592',replace(CCT_ID, '-','')) PHONE_NUMBER 
+		 ,round(avg(MAX_DOWNLOAD_SPEED_KBPS) /1000,2) AVG_DOWNLOAD_SPEED_Mb
+		 ,round(min(MAX_DOWNLOAD_SPEED_KBPS)/1000,2) MIN_DOWNLOAD_SPEED_Mb
+		 ,round(max(MAX_DOWNLOAD_SPEED_KBPS) /1000, 2) MAX_DOWNLOAD_SPEED_Mb
+		 ,round(avg(MAX_UPLOAD_SPEED_KBPS) /1000,2) AVG_UPLOAD_SPEED_Mb
+		 ,round(min(MAX_UPLOAD_SPEED_KBPS)/1000,2) MIN_UPLOAD_SPEED_Mb
+		 ,round(max(MAX_UPLOAD_SPEED_KBPS) /1000, 2) MAX_UPLOAD_SPEED_Mb
+		 FROM 
+		 	ATNI_PROD.GTT_REPORTING.GTT_DSL_DATA_RATE A
+		 where
+		 	date(created_date) BETWEEN dateadd(day, -7, CURRENT_DATE() ) AND date(current_date)
+		 GROUP BY 1
+    
+    ) sub ON sub.PHONE_NUMBER = concat('592',replace(B.CCT_ID, '-','')) 
+ where
+ 	date(created_date) = date(current_date) 
+ 	
+ )sub2
+ 	ON sub1.PHONE_NUMBER = sub2.PHONE_NUMBER

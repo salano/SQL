@@ -1,0 +1,55 @@
+SELECT
+    DISTINCT 
+          A.SYSTEMID,
+          A.ACCOUNTNUMBER,
+          A.BID,
+          C.SUBSCR_NO,
+          A.FIRSTNAME,
+          A.LASTNAME,
+          A.ACCOUNTNUMBER,
+          A.SERVICEADDRESS1,
+          A.SERVICEADDRESS2,
+          A.SERVICEADDRESS3,
+          A.SERVICEADDRESS4,
+          A.CITY,
+          B.PRODUCTNAME AS BILL_PRODUCT,
+
+          CASE WHEN A.SYSTEMID = 8 THEN 'Wireline'
+            WHEN A.SYSTEMID = 12 THEN 'DSL'
+            WHEN A.SYSTEMID = 15 THEN 'Leased Line'
+            WHEN A.SYSTEMID = 17 THEN 'Calling Card'
+            WHEN A.SYSTEMID = 18 THEN 'WiMax'
+            WHEN A.SYSTEMID = 22 THEN 'Interconnect'
+            WHEN A.SYSTEMID = 24 THEN 'GPON'
+            WHEN A.SYSTEMID = 4 THEN 'Mobile'
+           END PRODUCT,
+           G.EXCHANGE,
+           BILL_FNAME,BILL_LNAME, BILL_COMPANY,
+			BILL_ADDRESS1,BILL_ADDRESS2, BILL_ADDRESS3, BILL_ADDRESS4, BILL_CITY, BILL_STATE, BILL_ZIP, BILL_COUNTY,
+   			CUST_EMAIL Email,
+  			CUST_PHONE1 ,CUST_PHONE2,
+  			CONTACT1_PHONE,CONTACT2_PHONE
+        
+FROM          
+          
+    SC_INPUT.ODSSUBSCRIBERSNAPSHOT A
+    INNER JOIN SC_OUTPUT.DIMPRODUCT B ON
+                                            A.RATEPLANCODE::STRING = B.PRODUCTCODE
+                                            --AND B.LEAFLEVELNAME ='Mobile Prepaid Combo'
+                                            AND B.SOURCESYSTEMID = 1
+                                            AND B.REVENUECOUNTABLE = 1
+    INNER JOIN GTT_REPORTING.GTT_SAA_SUBSCRIBER_FEED_DETAIL  C ON  ---GET SUBSCR_NO
+                                                               A.ACCOUNTNUMBER=C.ACCOUNTNUMBER AND A.BID=C.BID 
+                                                               AND C.DATESTART = current_Date()-1
+    LEFT JOIN GTT_REPORTING.CMF_EXTRACT D ON A.ACCOUNTNUMBER = D.ACCOUNT_NO AND date(D.EXTRACT_FILE_DATE) = current_Date()
+    LEFT JOIN GTT_REPORTING.BILL_DISP_METH_VALUES F ON D.BILL_DISP_METH = F.BILL_DISP_METH
+    LEFT JOIN ATNI_PROD.GTT_REPORTING.DSL_DUMPS_DNS_RAW G ON A.BID = CONCAT('592',G.PHONE_NUMBER) AND date(G.dump_ts) = date(CURRENT_DATE())
+    WHERE
+    A.SOURCESYSTEMID = 1
+    AND A.DATESTART = current_Date()-1
+    AND A.SYSTEMID IN (12,8)
+    AND G.EXCHANGE = 'Amelia''s Ward'
+    --AND date(D.created_date) = current_Date()
+    AND A.STATUSCODE NOT IN('D','P')
+    AND A.CUSTOMERTYPE NOT IN(24)
+    ORDER BY 1, 2		

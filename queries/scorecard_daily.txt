@@ -1,0 +1,44 @@
+SELECT
+
+	ACCOUNTNUMBER,
+	
+	BID,
+	A.DATESTART,
+	B.gen03levelname line_of_service,
+	B.gen04levelname subline_of_service,
+	B.gen05levelname subline_of_service_segment,
+	A.CUSTOMERTYPE
+
+FROM
+
+SC_INPUT.ODSSUBSCRIBERSNAPSHOT A
+
+INNER JOIN
+
+SC_OUTPUT.DIMPRODUCT B ON A.RATEPLANCODE::STRING=B.PRODUCTCODE
+
+                          --AND B.LEAFLEVELNAME='Mobile Prepaid Combo'
+
+                          AND B.SOURCESYSTEMID=1
+
+                          AND B.UNITCOUNTABLE=1
+
+                          AND B.REVENUECOUNTABLE=1
+
+INNER JOIN
+
+SC_OUTPUT.DIMCUSTOMERTYPE C ON A.CUSTOMERTYPE=C.CUSTOMERTYPECODE
+
+                            AND C.SOURCESYSTEMID=1
+
+                            AND C.UNITCOUNTABLE=1
+
+                            AND C.REVENUECOUNTABLE=1
+
+WHERE
+
+A.SOURCESYSTEMID=1 --GTT
+
+AND A.DATESTART >= ADD_MONTHS(current_date, -1)
+
+--AND A.STATUSCODE IN ('A','I','S','PD') --THESE STATUSES ARE CONSIDERED AS ENDING

@@ -1,0 +1,23 @@
+SELECT 
+	 CONNECT_DATETIME, 
+	 ORIGINATING_NUMBER Calling_number,
+	 TERMINATING_NUMBER called_number,
+	 ELAPSED_TIME duration_seconds
+FROM 
+	GTT_REPORTING.GENBAND_CDR
+WHERE 
+	date(CONNECT_DATETIME) BETWEEN to_date('01-08-2021','DD-MM-YYYY') AND to_date('31-08-2021','DD-MM-YYYY')
+	AND ORIGINATING_NUMBER IN (
+								'5926465351',
+								'5926722337',								
+								'5926429801',								
+								'5922255886',								
+								'5926774963'	
+								)
+   OR TERMINATING_NUMBER IN (
+								'5926465351',
+								'5926722337',								
+								'5926429801',								
+								'5922255886',								
+								'5926774963'	
+								)

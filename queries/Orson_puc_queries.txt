@@ -1,0 +1,307 @@
+--drop table tmp_ors_puc;
+
+create table tmp_ors_puc as
+select distinct  
+  c.ACCOUNT_NO,
+  eip.EXTERNAL_ID,
+  BILL_FNAME || ' '||BILL_LNAME ||' '|| BILL_COMPANY Name,
+  BILL_ADDRESS1 ||' ' ||BILL_ADDRESS2 ||' '|| BILL_ADDRESS3||' ' || BILL_ADDRESS4||' ' || BILL_CITY||' ' || BILL_STATE||' ' || BILL_ZIP|| ' ' || BILL_COUNTY Address,
+  'DSL' as service_category,
+  DP.DISPLAY_VALUE
+from 
+  ADMIN.CMF_EXTRACT c left join
+  ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO left JOIN  --and c.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd')
+  bill_disp_meth_values DP ON c.bill_disp_meth = DP.bill_disp_meth
+where
+  --eip.IS_CURRENT = 1 and 
+  eip.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd') and
+  eip.EXTERNAL_ID_TYPE in (11) and
+  c.ACCOUNT_CATEGORY <> 12 and
+  -- A.OFFER_TYPE in (2) and
+  --(c.EXTRACT_FILE_DATE) ='20180930' and
+  c.EXTRACT_FILE_DATE = current_date and
+  DP.bill_disp_meth in (1,2,3,5,6,11,12,13,15)
+   
+
+  -- c.DATE_INACTIVE is  null
+
+
+
+union
+
+SELECT
+  c.ACCOUNT_NO,
+  eip.EXTERNAL_ID,
+  BILL_FNAME || ' '||BILL_LNAME ||' '|| BILL_COMPANY Name,
+  BILL_ADDRESS1 ||' ' ||BILL_ADDRESS2 ||' '|| BILL_ADDRESS3||' ' || BILL_ADDRESS4||' ' || BILL_CITY||' ' || BILL_STATE||' ' || BILL_ZIP|| ' ' || BILL_COUNTY Address,
+  'BLAZE' as service_category,
+  DP.DISPLAY_VALUE
+
+
+FROM
+		OFFER_INST A
+		INNER JOIN
+		OFFER_VALUES O ON A.OFFER_ID=O.OFFER_ID AND RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM OFFER_VALUES)
+		LEFT JOIN
+		 ADMIN.CMF_EXTRACT C ON A.ACCOUNT_NO = C.ACCOUNT_NO  left JOIN
+		 ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO and eip.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd') left JOIN
+		 bill_disp_meth_values DP ON c.bill_disp_meth = DP.bill_disp_meth
+	WHERE
+		DATE(A.EFFECTIVE_DT)<=CURRENT_DATE 
+        AND DATE(A.EXPIRY_DT)>CURRENT_DATE
+		AND A.INACTIVE_DT IS NULL 
+		AND A.OFFER_TYPE in (2,3) -- PRIMARY OFFER
+		AND A.ACCOUNT_NO <> 0
+		AND A.OFFER_ID IN( 
+							SELECT
+							REPLACE(PRODUCTSCODE,'MP','')
+							FROM
+							SAA_PROD..DIMPRODUCTS
+							WHERE
+							GEN03LEVELNAME LIKE '%GPON Data%'
+							AND PRODUCTSCODE NOT LIKE 'RC%'
+		                 )
+		AND A.SUBSCR_NO IN( SELECT 
+						 SUBSCR_NO
+						 FROM 
+						 EXTERNAL_ID_EQUIP_MAP
+						 WHERE
+						 EXTERNAL_ID_TYPE IN (37, 39) --BLAZE
+						 AND DATE(EFFECTIVE_DT)<=CURRENT_DATE 
+						 AND DATE(EXPIRY_DT)>CURRENT_DATE
+						 AND INACTIVE_DATE IS NULL
+						 ) 	
+        AND  c.EXTRACT_FILE_DATE = date(current_date)
+		AND  DP.bill_disp_meth in (1,2,3,5,6,11,12,13,15)
+		
+
+
+union
+
+select distinct  
+  c.ACCOUNT_NO,
+  eip.EXTERNAL_ID,
+  BILL_FNAME || ' '||BILL_LNAME ||' '|| BILL_COMPANY Name,
+  BILL_ADDRESS1 ||' ' ||BILL_ADDRESS2 ||' '|| BILL_ADDRESS3||' ' || BILL_ADDRESS4||' ' || BILL_CITY||' ' || BILL_STATE||' ' || BILL_ZIP|| ' ' || BILL_COUNTY Address,
+  'LandLine' as service_category,
+  DP.DISPLAY_VALUE
+from 
+  ADMIN.CMF_EXTRACT c left join
+  ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO --and c.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd')
+  left join
+  ADMIN.OFFER_INST A ON A.SUBSCR_NO = eip.SUBSCR_NO left JOIN
+  bill_disp_meth_values DP ON c.bill_disp_meth = DP.bill_disp_meth
+where
+  --eip.IS_CURRENT = 1 and 
+  eip.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd') and
+  eip.EXTERNAL_ID_TYPE in (9) and
+  A.OFFER_TYPE =2 and 
+  A.OFFER_ID NOT IN('2360','10458') and
+  A.INACTIVE_DT is null and 
+  eip.EXTERNAL_ID like '592%' and
+  --(c.EXTRACT_FILE_DATE) ='20180930' and
+  c.EXTRACT_FILE_DATE = date(current_date) and
+  DP.bill_disp_meth in (1,2,3,5,6,11,12,13,15)
+
+   --c.DATE_INACTIVE is  null
+   
+
+union
+
+select distinct
+
+  c.ACCOUNT_NO,
+  eip.EXTERNAL_ID,
+  BILL_FNAME || ' '||BILL_LNAME ||' '|| BILL_COMPANY Name,
+  BILL_ADDRESS1 ||' ' ||BILL_ADDRESS2 ||' '|| BILL_ADDRESS3||' ' || BILL_ADDRESS4||' ' || BILL_CITY||' ' || BILL_STATE||' ' || BILL_ZIP|| ' ' || BILL_COUNTY Address,
+  'POSTPAID Mobile' as service_category,
+  DP.DISPLAY_VALUE
+from 
+  ADMIN.CMF_EXTRACT c left join
+  ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO --and c.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd')
+  left join  ADMIN.ACCOUNT_SUBSCRIBER_EXTRACT ase on c.ACCOUNT_NO = ase.ACCOUNT_NO and ase.EXTRACT_FILE_DATE = to_char(current_date, 'yyyyMMdd') left JOIN
+   bill_disp_meth_values DP ON c.bill_disp_meth = DP.bill_disp_meth
+where
+  --eip.IS_CURRENT = 1 and 
+  eip.EXTRACT_FILE_DATE = to_char(current_date, 'yyyyMMdd') and
+  eip.EXTERNAL_ID_TYPE in (1) and
+  --(c.EXTRACT_FILE_DATE) ='20180930' and
+  (ase.payment_mode1 !=1 or ase.payment_mode1 is null ) and
+  c.EXTRACT_FILE_DATE = date(current_date) and
+  DP.bill_disp_meth in (1,2,3,5,6,11,12,13,15)
+
+   --c.DATE_INACTIVE is  null
+   
+
+select * from tmp_ors_puc
+------------------------------------------------------
+create table tmp_ors_calls as
+select
+ ACCOUNT_NO,
+ EXTERNAL_ID,
+ sum(case when month_id = '2020-01' then calls else 0 end) as "2020-01 calls",
+ sum(case when month_id = '2020-02' then calls else 0 end) as "2020-02 calls",
+ sum(case when month_id = '2020-03' then calls else 0 end) as "2020-03 calls",
+ sum(case when month_id = '2020-04' then calls else 0 end) as "2020-04 calls",
+ sum(case when month_id = '2020-05' then calls else 0 end) as "2020-05 calls",
+ sum(case when month_id = '2020-06' then calls else 0 end) as "2020-06 calls"
+from
+(
+select 
+  TO_CHAR(g.CONNECT_DATETIME, 'YYYY-MM') Month_id,
+  c.ACCOUNT_NO,
+  eip.EXTERNAL_ID,
+  count(1) calls
+from 
+  ADMIN.CMF_EXTRACT c join
+  ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO and c.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd') and eip.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd') join
+ 
+	ADMIN.GENBAND_CDR g on eip.EXTERNAL_ID=g.ORIGINATING_NUMBER 
+where 
+	g.TERMINATING_NUMBER='9972279401' and
+	DATE(g.CONNECT_DATETIME) BETWEEN '20200101' and '20200630'--date(add_months(current_date, -6)-1) and date(current_date-1) 
+	group by 1,2,3
+) sub
+group by 1,2
+	
+----------------------------------------------
+--drop table tmp_ors_disconnects;
+create table tmp_ors_disconnects as
+select
+ ACCOUNT_NO,
+ --EXTERNAL_ID,
+ sum(case when month_id = '2020-01' then Disconnections else 0 end) as "2020-01 Disco",
+ sum(case when month_id = '2020-02' then Disconnections else 0 end) as "2020-02 Disco",
+ sum(case when month_id = '2020-03' then Disconnections else 0 end) as "2020-03 Disco",
+ sum(case when month_id = '2020-04' then Disconnections else 0 end) as "2020-04 Disco",
+ sum(case when month_id = '2020-05' then Disconnections else 0 end) as "2020-05 Disco",
+ sum(case when month_id = '2020-06' then Disconnections else 0 end) as "2020-06 Disco"
+from
+(
+select 
+  distinct
+  TO_CHAR(c.DATE_INACTIVE, 'YYYY-MM') Month_id,
+  c.ACCOUNT_NO,
+  --eip.EXTERNAL_ID,
+  sum(CASE WHEN c.DATE_INACTIVE is null THEN 0 ELSE 1 END) as Disconnections
+from 
+  ADMIN.CMF_EXTRACT c join
+  ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO and eip.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd')
+  
+where 
+    c.DATE_INACTIVE is not null and 
+	c.EXTRACT_FILE_DATE = date(current_date) and
+	c.DATE_INACTIVE between '20200101' and '20200630' and --date(add_months(current_date, -6)) and date(current_date)
+	eip.EXTERNAL_ID like '592%'
+	
+group by 1,2
+order by 2,1
+) sub
+group by 1
+
+------------------------------------------------------------------------
+--drop table tmp_ors_payments;
+create table tmp_ors_payments as
+select
+ ACCOUNT_NO,
+ --EXTERNAL_ID,
+ max(case when month_id = '2020-01' then Payment_date else null end) as "2020-01 Payment_date",
+ max(case when month_id = '2020-02' then Payment_date else null end) as "2020-02 Payment_date",
+ max(case when month_id = '2020-03' then Payment_date else null end) as "2020-03 Payment_date",
+ max(case when month_id = '2020-04' then Payment_date else null end) as "2020-04 Payment_date",
+ max(case when month_id = '2020-05' then Payment_date else null end) as "2020-05 Payment_date",
+ max(case when month_id = '2020-06' then Payment_date else null end) as "2020-06 Payment_date"
+from
+(
+select 
+  distinct
+  TO_CHAR(B.TRANS_DATE, 'YYYY-MM') Month_id,
+  c.ACCOUNT_NO,
+  --eip.EXTERNAL_ID,
+  max(B.TRANS_DATE) Payment_date
+from 
+  ADMIN.CMF_EXTRACT c join
+  ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO and eip.EXTRACT_FILE_DATE = to_char(current_date, 'yyyyMMdd') join
+  ADMIN.BMF_EXTRACT B on c.ACCOUNT_NO = B.ACCOUNT_NO and B.EXTRACT_FILE_DATE = date(current_date)
+Where 
+	c.EXTRACT_FILE_DATE = date(current_date) and
+	date(B.TRANS_DATE) between '20200101' and '20200630' and --date(add_months(current_date, -6)) and date(current_date)
+	eip.EXTERNAL_ID like '592%' AND
+	B.BMF_TRANS_TYPE NOT IN(16,33,51,52,53,80,90)
+group by 1,2
+order by 1
+) sub
+
+group by 1
+
+----------------------------------------------------------------
+select 
+  distinct
+  A.ACCOUNT_NO,
+  A.EXTERNAL_ID,
+  A.Name,
+  A.Address,
+  A.service_category,
+  A.DISPLAY_VALUE as bill_dispatch,
+  (case when B."2020-01 calls" is null then 0 else B."2020-01 calls" end) as "2020-01 calls",
+  (case when B."2020-02 calls" is null then 0 else B."2020-02 calls" end) as "2020-02 calls",
+  (case when B."2020-03 calls" is null then 0 else B."2020-03 calls" end) as "2020-03 calls",
+  (case when B."2020-04 calls" is null then 0 else B."2020-04 calls" end) as "2020-04 calls",
+  (case when B."2020-05 calls" is null then 0 else B."2020-05 calls" end) as "2020-05 calls",
+  (case when B."2020-06 calls" is null then 0 else B."2020-06 calls" end) as "2020-06 calls",
+  
+  (case when C."2020-01 Disco" is null then 0 else C."2020-01 Disco" end) as "2020-01 Disconnections",
+  (case when C."2020-02 Disco" is null then 0 else C."2020-02 Disco" end) as "2020-02 Disconnections",
+  (case when C."2020-03 Disco" is null then 0 else C."2020-03 Disco" end) as "2020-03 Disconnections",
+  (case when C."2020-04 Disco" is null then 0 else C."2020-04 Disco" end) as "2020-04 Disconnections",
+  (case when C."2020-05 Disco" is null then 0 else C."2020-05 Disco" end) as "2020-05 Disconnections",
+  (case when C."2020-06 Disco" is null then 0 else C."2020-06 Disco" end) as "2020-06 Disconnections",
+  
+  /*C."2020-01 Disco",
+  C."2020-02 Disco",
+  C."2020-03 Disco",
+  C."2020-04 Disco",
+  C."2020-05 Disco",
+  C."2020-06 Disco",*/
+  
+  (case when D."2020-01 Payment_date" is null then null else D."2020-01 Payment_date" end) as "2020-01 Payment_date",
+  (case when D."2020-02 Payment_date" is null then null else D."2020-02 Payment_date" end) as "2020-02 Payment_date",
+  (case when D."2020-03 Payment_date" is null then null else D."2020-03 Payment_date" end) as "2020-03 Payment_date",
+  (case when D."2020-04 Payment_date" is null then null else D."2020-04 Payment_date" end) as "2020-04 Payment_date",
+  (case when D."2020-05 Payment_date" is null then null else D."2020-05 Payment_date" end) as "2020-05 Payment_date",
+  (case when D."2020-06 Payment_date" is null then null else D."2020-06 Payment_date" end) as "2020-06 Payment_date"
+from
+	tmp_ors_puc A LEFT JOIN
+	tmp_ors_calls B ON A.ACCOUNT_NO = B.ACCOUNT_NO AND A.EXTERNAL_ID = B.EXTERNAL_ID LEFT JOIN
+	tmp_ors_disconnects C ON A.ACCOUNT_NO = C.ACCOUNT_NO LEFT JOIN
+	tmp_ors_payments D ON A.ACCOUNT_NO = D.ACCOUNT_NO 
+order by 6,1,2
+
+
+select * from tmp_ors_payments order by ACCOUNT_NO;
+
+select * from tmp_ors_puc where ACCOUNT_NO = '19538835'  and EXTERNAL_ID ='5922652961'
+
+select * from EXTERNAL_ID_EQUIP_MAP_EXTRACT where ACCOUNT_NO = '19538835' and EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd')
+
+select C.bill_disp_meth, C.DATE_INACTIVE, C.ACCOUNT_CATEGORY, eip.EXTERNAL_ID_TYPE 
+from 
+  ADMIN.CMF_EXTRACT c left join
+  ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO --and c.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd')
+  left join
+  ADMIN.OFFER_INST A ON A.SUBSCR_NO = eip.SUBSCR_NO left JOIN
+  bill_disp_meth_values DP ON c.bill_disp_meth = DP.bill_disp_meth
+where
+--eip.IS_CURRENT = 1 and 
+ eip.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd') and
+c.EXTRACT_FILE_DATE = current_date
+and C.ACCOUNT_NO = '21353036'
+
+select C.bill_disp_meth, C.DATE_INACTIVE, C.ACCOUNT_CATEGORY
+from 
+  ADMIN.CMF_EXTRACT c 
+where
+ c.EXTRACT_FILE_DATE = current_date
+and C.ACCOUNT_NO = '19538835'
+
+

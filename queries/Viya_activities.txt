@@ -1,0 +1,25 @@
+	SELECT 
+		CUSTOMERNUMBER AS "Account Number"
+		,status AS "Activity Status" 
+		, OSV._val AS "Status Reason (Not Done)"
+		, WGV._val AS "Workgroup Reason"
+		,ActivityType AS "Activity Type"
+		,streetaddress AS Address
+		,City
+		,customername AS Name
+		,res.NAME AS "Resource Name"
+		, route_date AS "Route Date"
+		, stateprovince AS State
+		, VI_TECHNICIANNOTES AS "Technician Notes"
+		, timeslot AS "Time Slot"
+		, APPTNUMBER AS "Work Order"
+		,Workzone AS "WORK Zone"
+	FROM 
+		ATNI_DEV.GTT_REPORTING.VIYA_OFSC_ACTIVITIES act
+		LEFT JOIN ATNI_DEV.GTT_REPORTING.VIYA_OFSC_RESOURCES res 
+			ON act.RESOURCEID =  res.RESOURCEID
+	   LEFT JOIN ATNI_DEV.GTT_REPORTING.OSFC_ORDERSTATUS_VALUES OSV
+	   	ON act.VI_ORDERSTATUS = OSV._index
+	   LEFT JOIN ATNI_DEV.GTT_REPORTING.OSFC_WORKGROUP_VALUES WGV
+	   	ON act.VI_WORKGROUP = WGV._index
+	   	;

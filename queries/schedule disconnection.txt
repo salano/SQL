@@ -1,0 +1,31 @@
+drop table tmp01pendisc;
+create table tmp01pendisc as
+select /*+ parallel(a,8)*/ a.* from arm_event_queue a where upper(a.action) like '%DISCONNECT%' and processed_date is null;
+
+delete from tmp01pendisc where scheduled_date < trunc(sysdate);
+commit;
+
+drop table tmp_offer_inst_view;
+create table tmp_offer_inst_view as select /*+ parallel(a,8)*/ parent_account_no, subscr_no, offer_id from tmp01pendisc a join offer_inst_view b
+on a.account_no = b.parent_account_no where view_status = 2 and inactive_dt is null;
+
+drop table tmp_offers_list;
+create table tmp_offers_list as
+select /*+ parallel(a,8)*/ a.offer_id, display_value as offer_description from offer_values a join offer_ref b on a.offer_id = b.offer_id where offer_type = 2 and
+a.offer_id not in(2360,10334,10455,10352,10457,10458) and a.reseller_version_id in(select max(reseller_version_id) from reseller_version)
+and b.reseller_version_id in(select max(reseller_version_id) from reseller_version);
+
+drop table tmp_final_offers_list;
+create table tmp_final_offers_list as
+select a.*, offer_description from tmp_offer_inst_view a join tmp_offers_list b on a.offer_id = b.offer_id;
+
+drop table tmp02pendisc;
+create table tmp02pendisc as
+select /*+ parallel(a,8)*/ a.account_no, sum(balance_due) as balance_due from tmp01pendisc a join cmf_balance b on a.account_no = b.account_no group by a.account_no;
+
+drop table tmp03pendisc;
+create table tmp03pendisc as
+select /*+ parallel(a,8)*/ distinct a.account_no , subscr_no, b.action as suspension_action ,b.scheduled_date as suspend_action_dt, a.action as disconnect_action, a.scheduled_date as disconnect_action_date, nvl(balance_due,0)/100 as balance_due, offer_description, display_value as acct_cat_descr, bill_fname, bilL_lname, bilL_company, contact1_phone, contact2_phone, cust_email, statement_to_email from tmp01pendisc a join arm_event_queue b on a.collectable_id= b.collectable_id join cmf c on a.account_no
+= c.account_no left join tmp02pendisc d on a.account_no = d.account_no join account_category_values e on c.account_category = e.account_category
+join tmp_final_offers_list f on a.account_no = parent_account_no where b.action in('Suspend Service GPON','Wireline Bar Outgoing Calls','Suspend Service DSL','Mobile Bar Outgoing Calls, Texts and Data','Suspend VIP')
+and date_inactive is null and service_version_id in(select max(service_version_id) from service_version) order by a.scheduled_date, account_no ;

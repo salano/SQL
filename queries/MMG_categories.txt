@@ -1,0 +1,16 @@
+SELECT distinct 
+    ud.user_category_id,
+    --sum(UR.IS_DELETED) IS_DELETED,
+    count(1) num 
+FROM 
+    GTTUACCESSADM.USER_DETAILS UD
+    JOIN GTTUACCESSADM.USER_ U 
+				ON UD.ID = U.LATEST_USER_DETAILS_ID 
+    JOIN GTTUACCESSADM.USER_REFERENCE UR 
+				ON U.ID =  UR.USER_ID --AND UR.USER_REF_TYPE_ID = 'msisdn'
+group by 
+    ud.user_category_id
+    
+order by 
+    
+    ud.user_category_id

@@ -1,0 +1,399 @@
+print (123)
+
+for(i<-Array(1,2,3))println(i)
+
+
+select * 
+from _V_SYS_COLUMNS 
+where 
+(column_name like '%date%' 
+) 
+AND TABLE_SCHEM = 'ADMIN' 
+ORDER BY TABLE_NAME 
+
+
+
+navigator.analytics.enabled=false
+
+
+https://vpn2.atni.com/atni2factor
+
+https://cocralcldrgate1.atni.local:8888/ - hue
+https://172.19.100.100:7183/cmf/login - Cloudera Manager
+cocralcloudvm01.atni.local - Database
+
+http://cocralcloudvm03:18630/ - streamset GETFILESTATUS
+
+http://172.19.100.100:18630/ - streamset live
+
+https://atniazure.sharepoint.com/
+
+select id, service_name, username, event_time, operation from hdfs_audit_events_2017_10_08;
+select id, service_name, username, date_trunc('hour', to_timestamp(event_time)) AT TIME ZONE 'UTC', operation from hdfs_audit_events_2017_10_10 order by event_time desc;
+
+
+sbt new https://github.com/sbt/scala-seed.g8
+
+curl -i --negotiate -u : "http://172.19.100.101:50070/webhdfs/v1/user/?op=GETFILESTATUS"
+
+
+file server
+
+10.255.254.20
+
+
+to do
+Erricson
+Archives
+Sandvine
+Genband
+Airspan
+Nortel
+HLR/VLR
+SGSN 
+GGSN 
+Netezza
+
+
+
+
+spark-submit --master yarn-cluster --class converter.Convert --executor-memory 20G
+WordCount MyJarFile.jar fileURL
+
+
+CREATE EXTERNAL TABLE IF NOT EXISTS gtt.ericsson_mss_15a like parquet '/data/gtt/ericsson_mss_15a/transient/2017/smmc.parquet'
+partitioned BY ()
+
+
+
+import org.apache.log4j.Logger
+import org.apache.log4j.Level
+
+
+
+357572069204359
+
+
+Clairvoyant:
+
+Tableau -> Impala
+
+
+update services.
+Hive unable to query large dataset
+Hive on Spark query engine / mapreduce
+
+
+Impala connection details - Tableau
+[‎11/‎21/‎2017 2:27 PM] Shevon Morris: 
+Server : cocralcldrgate1.atni.local
+Type : HiveServer2
+Authentication: Kerberos
+Realm: ATNI.LOCAL
+Host FQDN: cocralcldrgate1.atni.local
+Service Name: hive
+
+
+/usr/bin/python
+
+/home/switch/bin/hlr_feed/download_hlr.py
+
+MGouridat@GTT.CO.GY
+
+http://10.128.128.114/pentaho/Home
+
+SELECT  a.username, b.FULL_NAME, b.Employee_Id, a.ACCOUNT_STATUS, a.PROFILE, a.CREATED, a.GRANTED_ROLE, a.DEPT, a.DB_NAME
+FROM temp_perm a 
+FULL OUTER JOIN
+DEPART_LIST b on b.username=a.username WHERE A.USERNAME is not NULL
+order by DB_NAME, USERNAME
+
+Please grant FTP access to 10.255.254.20 from 172.19.100.100
+
+
+
+nohup python move_comverse_meta.py > comver_move_log.out 2>&1 &
+
+nohup python move_ericsson_gprs_meta.py > ericsson_gprs_move_log_2014.out 2>&1 &
+
+
+
+
+C:\Pentaho\pdi-ce-5.2.0.0-209\data-integration\Kitchen.bat
+
+-file="C:\Jobs\MMS\MMS_YTD_Daily.kjb"  -logfile="C:\Jobs\MMS\log" -level="Error"
+
+
+/etl/gtt/comverse/archives/tmp_mv_2017_05/
+
+
+
+mvn install:install-file -Dfile=C:\Users\e9901041\Downloads\Clairvoyant\charging-gateway-function-master_clairvoyant -DpomFile=C:\Users\e9901041\Downloads\Clairvoyant\charging-gateway-function-master_clairvoyant\pom.xml
+ITR-162336 - admin access to laptop
+
+https://share.atni.com/sites/sharedservices/Mediation/DataReporting/Team%20BAU%20work%20prioritization/Team%20Ticket%20Prioritrization%20and%20delivery%20schedule.xlsx?Web=1
+
+/home/switch/bin/script/data
+os.remove("/home/switch/bin/script/data/"+filename)#needs to be relative TODO
+
+/DATA/gtt/smsc/in/
+
+15 */1 * * * python /home/switch/bin/script/SMSC_SFTP_GETTER.py > /home/switch/bin/script//move.out 2>&1
+
+mv /home/switch/bills.* /DATA/gtt/smsc/in/
+
+50 */1 * * * bash /home/switch/bin/archive_smsc.sh
+
+ls | awk '{system("bzip2 "$1" ")}'
+ls | grep -v ".bz2" | awk '{system("bzip2 "$1" ")}'
+
+
+d=2017-07-12
+while [ "$d" != 2017-07-13 ]; do
+  period=$(date -d "$d" '+%Y%m%d')
+  hdfs dfs -ls /etl/gtt/ericsson_mss_15a/raw/georgetowngy/$period | awk -F"/" '{print $8}'| grep ".gz" | sed 's/.gz//' > outputZipped
+  
+  for var in `cat outputZipped`; do
+    hdfs dfs -get /etl/gtt/ericsson_mss_15a/raw/georgetowngy/$period/$var".gz"
+    
+    gunzip $var".gz"
+    hdfs dfs -put $var /etl/gtt/ericsson_mss_15a/raw/georgetowngy/$period
+  done
+
+  d=$(date -I -d "$d + 1 day")
+done
+
+
+
+d=2017-07-12
+while [ "$d" != 2017-07-13 ]; do
+  period=$(date -d "$d" '+%Y%m%d')
+  hdfs dfs -ls /etl/gtt/ericsson_mss_15a/raw/georgetowngy/$period | awk -F"/" '{print $8}'| grep ".gz"  > outputZipped
+  
+  for var in `cat outputZipped`; do
+    hdfs dfs -rm /etl/gtt/ericsson_mss_15a/raw/georgetowngy/$period/$var
+    
+  done
+
+  d=$(date -I -d "$d + 1 day")
+done
+
+
+d=2017-11-25
+while [ "$d" != 2018-04-17 ]; do
+  period=$(date -d "$d" '+%Y%m%d')
+  hdfs dfs -rm -r /etl/gtt/HLR/$period 
+
+  d=$(date -I -d "$d + 1 day")
+done
+
+
+
+/data/gtt/cloudera/smsc
+
+6163796 - Mansoor
+Iman Jackdoor
+
+RITM0029693
++17584875538
+
+6143296
+
+/DATA/commnetus/ztevoice/atlantatx/archive/
+/data/gtt/cloudera/smsc/
+/data/commnet/cloudera/ztevoice
+switch@172.27.250.188
+
+
+ssh switch@10.128.128.170
+Comv_FTP@172.20.68.167
+Yamaha@123
+
+dsl stuck orders
+
+
+alex 6241141
+
+---dillian 6498359
+anthony -- 6631919 2265261
+
+
+6104337 -- adisema
+
+/DATA/gtt/dns/georgetowngy/process/
+/DATA/gtt/dsl_recon/in
+
+
+hdfs dfs -copyToLocal /etl/gtt/sandvine/SR/raw/region=georgetowngy/year=2017/month=09
+
+curl -k  -u switch: -T month04 sftp://172.27.250.188/data/gtt/cloudera/sandvine/sr/2017/;
+
+rsync -a month04 switch@172.27.250.188:/data/gtt/cloudera/sandvine/sr/2017/
+
+rsync -avz month04/ switch@172.27.250.188:/data/gtt/cloudera/sandvine/sr/2017/
+
+/DATA/gtt/sandvine_usage/georgetowngy/archive/SR/
+
+
+-executor-memory 30G --num-executors 22 --executor-cores 5 --py-files ericsson_parser_mod-0.1-py2.7.egg,pyasn1-0.2.3-py2.4.egg
+
+DB:infor - u:gtt_reporting, p:Abcd_1234
+
+
+/data/gtt/cloudera/nortelgsm_geo
+
+
+/DATA/gtt/genband/georgetowngy/archive/2014
+
+/data/gtt/cloudera/genband
+
+
+ du -s 2014* | awk '{sum += $1} END {print sum} '
+
+ /data/gtt/cloudera/ericsson_sgsn
+
+ /data/gtt/cloudera/ericcson_lte
+
+ 6468300
+
+period=$(date -d "$d" '+%Y%m%d')
+
+d=2016-12-10
+while [ "$d" != 2017-01-01 ]; do
+  year=$(date -d "$d" '+%Y')
+  month=$(date -d "$d" '+%m')
+  day=$(date -d "$d" '+%d')
+  hdfs dfs -copyToLocal /etl/gtt/ericsson_lte/archives/region=georgetowngy/year=2016/month=12/day=$day 
+  mv day=$day $year$month$day
+
+  d=$(date -I -d "$d + 1 day")
+done
+
+https://outlook.office365.com
+
+hdfs dfs -copyToLocal  /etl/gtt/DMS100_GEO_CDR_NZ
+sftp switch@172.27.250.188
+mput -r part-*  /data/gtt/cloudera/DMS100_GEO_CDR_NZ
+
+hdfs dfs -copyToLocal /etl/gtt/ericsson_lte/archives/region=georgetowngy/year=2016/month=12/day=1 
+
+beterverwagtinggy georgetowngy newamsterdamgy
+
+
+ mput -r 2016*  /data/gtt/cloudera/ericcson_lte/
+
+
+AllorNothing
+ sftp switch@172.27.250.188
+
+/DATA/commnetus/aaa/castlerockco/archive/
+
+/data/commnet/cloudera/aaa/castlerockco
+
+
+/DATA/gtt/smsc/archive/
+
+
+/data/gtt/cloudera/HLR
+/data/gtt/cloudera/hlr_log
+/DATA/gtt/comverse/georgetowngy/archive/2020
+
+
+
+ftp_site1 = "172.20.68.167"
+ftp_site2 = "10.255.254.20"
+ftp_user1 = "Comv_FTP"
+ftp_user2 = "switch"
+ftp_password="Yamaha@123"
+
+
+
+/data/commnet/cloudera/aaa/castlerockco
+/data/commnet/cloudera/affirmlte_cg/denverco
+
+190.80.13.3
+comvftp
+$MindSys$
+
+
+10791
+10794
+11115
+11142
+11167
+11166
+11186
+
+sqlmdata/sqlm_tmp/onstage_staging_tmp/22/data/airspan/in/
+/data/commnet/cloudera/affirmpgw/lasvegasnv
+
+/data/commnet/cloudera/aluaaa
+/data/commnet/cloudera/aluaaa_roam
+/data/commnet/cloudera/cfg/castlerockco
+Migrate AAA, AfirmLte_CFG, and AffirmPGW files from Cloudera to 172.27.250.188
+
+/data/commnet/cloudera/ciscolte_cg/castlerockco
+
+
+
+APPID
+
+1-voice
+2-sms
+
+7 - data
+10 - data
+
+
+Maesh 6230589
+
+/DATA/gtt/ggsn/georgetowngy/archive/2017
+
+/data/gtt/cloudera/ggsn
+
+
+curl -u switch:  sftp://172.27.250.188/data/gtt/cloudera/ggsn/20170101/;
+
+
+import pysftp
+import datetime
+from datetime import date , timedelta
+
+def datespan(startDate, endDate, delta=timedelta(days=1)):
+    currentDate = startDate
+    while currentDate < endDate:
+        yield currentDate
+        currentDate += delta
+
+
+for dateAndtime in datespan(date(2020, 1, 1), date(2020, 4, 15), delta=timedelta(days=1)):
+
+    with pysftp.Connection('172.27.250.188',username='switch',private_key='/home/switch/.ssh/id_rsa') as sftp:
+        sftp.cwd('/data/gtt/cloudera/ggsn')
+        sftp.get_r(dateAndtime.strftime("%Y%m%d"), '/DATA/gtt/ggsn/georgetowngy/archive/2017', preserve_mtime=True)
+    print 'completed' + dateAndtime.strftime("%Y%m%d")
+
+print 'All Completed'
+
+
+
+d=2020-06-01
+while [ "$d" != 2020-06-23 ]; do
+  period=$(date -d "$d" '+%Y%m%d')
+  year=$(date -d "$d" '+%Y')
+  month=$(date -d "$d" '+%m')
+  day=$(date -d "$d" '+%d')
+  cp /DATA/gtt/ericsson_gsm/georgetowngy/archive/$year/$month/$day/* /DATA/gtt/ericsson_gsm/georgetowngy/out   
+
+  d=$(date -I -d "$d + 1 day")
+done
+
+
+
+
+
+
+
+
+
+

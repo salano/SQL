@@ -1,0 +1,432 @@
+ create table mobile2for_accounts as
+ select
+  distinct
+   SUB.ACCOUNT_NO,
+   SUB.SUBSCR_NO,
+   SUB.CONTACT_CNO,
+   SUB.OFFER_ID,
+   SUB.DISPLAY_VALUE,
+   ase.ACCOUNT_NO cont_account_no,
+   ase.SUBSCR_NO cont_subscr_no
+ 
+ from
+ (
+ 
+ SELECT
+
+		A.ACCOUNT_NO,
+		A.SUBSCR_NO,
+		C.DATE_CREATED,
+		CASE WHEN C.CONTACT1_PHONE is null and C.CONTACT2_PHONE is not null and substr(C.CONTACT2_PHONE, 1,1) = '6' THEN '592'||REPLACE(C.CONTACT2_PHONE,'-','')
+	     WHEN C.CONTACT1_PHONE is null and C.CONTACT2_PHONE is not null and substr(C.CONTACT2_PHONE, 1,1) = '5' THEN REPLACE(C.CONTACT2_PHONE,'-','')
+	     WHEN C.CONTACT1_PHONE is not null  and substr(C.CONTACT1_PHONE, 1,1) = '5' THEN REPLACE(C.CONTACT1_PHONE,'-','')
+	     WHEN C.CONTACT1_PHONE is not null  and substr(C.CONTACT1_PHONE, 1,1) = '6' THEN '592'||REPLACE(C.CONTACT1_PHONE,'-','')
+	   else
+	     '592'||A.ACCOUNT_NO
+		end CONTACT_CNO,
+    A.OFFER_ID,
+    O.DISPLAY_VALUE
+
+	FROM
+		OFFER_INST A
+		INNER JOIN
+		OFFER_VALUES O ON A.OFFER_ID=O.OFFER_ID AND RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM OFFER_VALUES)
+		LEFT JOIN
+		  ADMIN.CMF C ON A.ACCOUNT_NO = C.ACCOUNT_NO
+	WHERE
+		DATE(A.EFFECTIVE_DT)<=CURRENT_DATE 
+        AND DATE(A.EXPIRY_DT)>CURRENT_DATE
+		AND A.INACTIVE_DT IS NULL 
+		AND A.OFFER_TYPE =2 -- PRIMARY OFFER
+		AND A.ACCOUNT_NO <> 0
+		AND A.SUBSCR_NO IN( SELECT 
+						 SUBSCR_NO
+						 FROM 
+						 EXTERNAL_ID_EQUIP_MAP
+						 WHERE
+						 EXTERNAL_ID_TYPE = 11 --DSL
+						 AND DATE(EFFECTIVE_DT)<=CURRENT_DATE 
+						 AND DATE(EXPIRY_DT)>CURRENT_DATE
+						 --AND INACTIVE_DATE IS NULL
+						 ) 
+						 
+union						 
+
+ SELECT
+ 
+		A.ACCOUNT_NO,
+		A.SUBSCR_NO,
+		C.DATE_CREATED,
+		CASE WHEN C.CONTACT1_PHONE is null and C.CONTACT2_PHONE is not null and substr(C.CONTACT2_PHONE, 1,1) = '6' THEN '592'||REPLACE(C.CONTACT2_PHONE,'-','')
+	     WHEN C.CONTACT1_PHONE is null and C.CONTACT2_PHONE is not null and substr(C.CONTACT2_PHONE, 1,1) = '5' THEN REPLACE(C.CONTACT2_PHONE,'-','')
+	     WHEN C.CONTACT1_PHONE is not null  and substr(C.CONTACT1_PHONE, 1,1) = '5' THEN REPLACE(C.CONTACT1_PHONE,'-','')
+	     WHEN C.CONTACT1_PHONE is not null  and substr(C.CONTACT1_PHONE, 1,1) = '6' THEN '592'||REPLACE(C.CONTACT1_PHONE,'-','')
+	   else
+	     '592'||A.ACCOUNT_NO
+		end CONTACT_CNO,
+    A.OFFER_ID,
+    O.DISPLAY_VALUE
+		
+
+	FROM
+		OFFER_INST A
+		INNER JOIN
+		OFFER_VALUES O ON A.OFFER_ID=O.OFFER_ID AND RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM OFFER_VALUES)
+		LEFT JOIN
+		 ADMIN.CMF C ON A.ACCOUNT_NO = C.ACCOUNT_NO
+	WHERE
+		DATE(A.EFFECTIVE_DT)<=CURRENT_DATE 
+        AND DATE(A.EXPIRY_DT)>CURRENT_DATE
+		AND A.INACTIVE_DT IS NULL 
+		AND A.OFFER_TYPE in (2,3) -- PRIMARY OFFER
+		AND A.ACCOUNT_NO <> 0
+		AND A.OFFER_ID IN( '11168',
+							'11114',
+							'11166',
+							'10942',
+							'10791',
+							'10794',
+							'11115',
+							'11142',
+							'11167',
+							'11186'
+		                 )
+		AND A.SUBSCR_NO IN( SELECT 
+						 SUBSCR_NO
+						 FROM 
+						 EXTERNAL_ID_EQUIP_MAP
+						 WHERE
+						 EXTERNAL_ID_TYPE IN (37, 39) --BLAZE
+						 AND DATE(EFFECTIVE_DT)<=CURRENT_DATE 
+						 AND DATE(EXPIRY_DT)>CURRENT_DATE
+						 --AND INACTIVE_DATE IS NULL
+						 ) 	
+
+) SUB
+
+left join 
+  ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT ase on sub.CONTACT_CNO  = ase.EXTERNAL_ID AND ase.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd') and ase.is_current =1
+ ----------------------------------------------------------------------
+ insert into mobile2fpr2_RC
+SELECT
+       extract(year from Detail.APPLY_DATE) RC_YEAR,
+	   extract(month from Detail.APPLY_DATE) RC_MTH,
+       ACCOUNT_NO,
+	   SUBSCR_NO,
+       COUNT(Detail.OFFER_INST_ID) AS S_COUNT,
+       SUM(Detail.CHARGED_AMOUNT - Detail.TOTAL_TAX) AS REVENUE_PREPAID, 
+       SUM(Detail.TOTAL_TAX) AS TAX_PREPAID,
+       SUM(Detail.CHARGED_AMOUNT) AS CHARGED_AMOUNT,
+	   SUM(Detail.AMOUNT) AS Plan_Cost,
+	   SUM(Detail.NUM_DAYS) AS Plan_length,
+       SUM(CASE WHEN Detail.RC_TYPE = 'Unknown' THEN Detail.CHARGED_AMOUNT - Detail.TOTAL_TAX ELSE 0 END) AS REVENUE_PLAN,
+       SUM(CASE WHEN Detail.RC_TYPE = 'Voice' THEN Detail.CHARGED_AMOUNT - Detail.TOTAL_TAX ELSE 0 END) AS REVENUE_VOICE,
+       SUM(CASE WHEN Detail.RC_TYPE = 'SMS' THEN Detail.CHARGED_AMOUNT - Detail.TOTAL_TAX ELSE 0 END) AS REVENUE_SMS,
+       SUM(CASE WHEN Detail.RC_TYPE = 'Data' THEN Detail.CHARGED_AMOUNT - Detail.TOTAL_TAX ELSE 0 END) AS REVENUE_DATA,
+       SUM(CASE WHEN Detail.RC_TYPE = 'Unknown' THEN Detail.TOTAL_TAX ELSE 0 END) AS TAX_PLAN,
+       SUM(CASE WHEN Detail.RC_TYPE = 'Voice' THEN Detail.TOTAL_TAX ELSE 0 END) AS TAX_VOICE,
+       SUM(CASE WHEN Detail.RC_TYPE = 'SMS' THEN Detail.TOTAL_TAX ELSE 0 END) AS TAX_SMS,
+       SUM(CASE WHEN Detail.RC_TYPE = 'Data' THEN Detail.TOTAL_TAX ELSE 0 END) AS TAX_DATA
+FROM
+       (SELECT 
+	        distinct
+             A.APPLY_DATE,
+             A.RC_TERM_INST_ID,
+             A.PARENT_ACCOUNT_NO AS ACCOUNT_NO,
+             A.PARENT_SUBSCR_NO AS SUBSCR_NO,
+             A.OFFER_ID,
+             D.DISPLAY_VALUE AS OFFER_DESCRIPTION,
+             A.RC_TERM_ID,
+             F.DISPLAY_VALUE AS RC_TERM_DISPLAY_VALUE,
+             CASE WHEN UPPER(F.DISPLAY_VALUE) LIKE '%DATA%' THEN 'Data'
+                    WHEN UPPER(F.DISPLAY_VALUE) LIKE '%VOICE%' THEN 'Voice'
+                    WHEN UPPER(F.DISPLAY_VALUE) LIKE '%SMS%' THEN 'SMS'
+                    ELSE 'Unknown' END AS RC_TYPE,
+             A.NUM_DAYS,
+             B.OFFER_TYPE,
+             E.OFFER_INST_ID,
+             C.BALANCE_ID,
+             A.AMOUNT/100 as AMOUNT,
+             A.TOTAL_TAX/100 AS TOTAL_TAX,
+             C.BALANCE_AMOUNT/100 AS CHARGED_AMOUNT
+       FROM mobile2for_accounts tmp
+	         JOIN RC A on tmp.cont_subscr_no = A.PARENT_SUBSCR_NO AND tmp.cont_account_no = A.BILLING_ACCOUNT_NO
+             LEFT JOIN OFFER_REF B
+             ON A.OFFER_ID = B.OFFER_ID AND B.RESELLER_VERSION_ID = (SELECT MAX(reseller_version_id) FROM reseller_version)
+             JOIN RC_BALANCE C
+             ON A.RC_TERM_INST_ID = C.RC_TERM_INST_ID AND A.BILLING_SEQUENCE_NUMBER = C.BILLING_SEQUENCE_NUMBER AND C.PAYMENT_MODE = 1
+             LEFT JOIN OFFER_VALUES D
+             ON A.OFFER_ID = D.OFFER_ID AND D.RESELLER_VERSION_ID = (SELECT MAX(RESELLER_VERSION_ID) FROM OFFER_VALUES)
+             LEFT JOIN RC_TERM_INST_EXTRACT E
+             ON E.RC_TERM_INST_ID = A.RC_TERM_INST_ID AND DATE(E.EXTRACT_FILE_DATE) = current_date
+             LEFT JOIN RC_TERM_VALUES F
+             ON F.RC_TERM_ID = A.RC_TERM_ID AND F.RESELLER_VERSION_ID = (SELECT MAX(RESELLER_VERSION_ID) FROM RC_TERM_VALUES)
+       WHERE B.SERVICE_CATEGORY_ID=4 AND B.PAYMENT_MODE=1 AND C.BALANCE_ID = 89
+       AND DATE(A.APPLY_DATE) BETWEEN '20190401'::date and '20190430'::date --date_trunc('month',current_date - day(current_date)) AND date(current_date-day(current_date))
+       AND A.AMOUNT != 0
+	   AND A.OFFER_ID in(
+	                    11179,
+						11174,
+						11067,
+						11069,
+						10969,
+						10992,
+						10999,
+						11000,
+						11003,
+						11035,
+						11064,
+						11175,
+						11083,
+						11112,
+						11180,
+						11048,
+						10970,
+						11004,
+						11037,
+						11065,
+						11181,
+						10956,
+						11052,
+						11077,
+						11078,
+						10971,
+						11001,
+						11005,
+						11022,
+						11036,
+						11051,
+						11176,
+						10957,
+						10993,
+						11182,
+						11085,
+						10972,
+						11006,
+						11023,
+						11025,
+						11033,
+						11039,
+						11086,
+						11177,
+						11178,
+						10958,
+						10973,
+						10994,
+						11007,
+						11087,
+						10959,
+						11197,
+						10960,
+						11187,
+						11191,
+						11202,
+						11203,
+						11189,
+						11192,
+						11195
+	 
+	 )
+	   
+	   
+	   ) Detail
+GROUP BY 1,2,3,4
+ORDER BY 1,2
+ 
+
+
+ -------------------------------------------------
+
+ io+
+ 3 
+
+  ------------------------------------------------------------------
+
+   insert into mobile2fpr2_DATA
+select
+   tmp.cont_subscr_no,
+   month('20191201'::date) data_MTH,
+   year('20191201'::date)  data_YR,
+   sum(C.PRIMARY_UNITS) data_bytes,
+   sum(NVL(C.CHARGED_AMOUNT,0)/100 - NVL(C.TOTAL_TAX,0)/100)  data_REVENUE
+
+ from 
+    mobile2for_accounts tmp
+	join 
+    ADMIN.CDR_DATA C on c.SUBSCR_NO = tmp.cont_subscr_no and date(c.TRANS_DT)  between '20191201'::date and '20191231'::date
+	and c.APPLICATION_ID  in(7,10,13) and EXTERNAL_ID_TYPE=1
+
+	
+group by 1,2,3
+
+-----------------------------------------------------------------
+
+
+insert into mobile2fpr2_sms
+select
+   tmp.cont_subscr_no,
+   month('20191201'::date) sms_MTH,
+   year('20191201'::date)  sms_YR,
+   sum(C.PRIMARY_UNITS) sms,
+   sum(NVL(C.CHARGED_AMOUNT,0)/100 - NVL(C.TOTAL_TAX,0)/100)  sms_REVENUE
+
+ from 
+    mobile2for_accounts tmp
+	 join 
+    ADMIN.CDR_DATA C on c.SUBSCR_NO = tmp.cont_subscr_no and date(c.TRANS_DT)  between '20191201'::date and '20191231'::date
+	and c.APPLICATION_ID  =2 and EXTERNAL_ID_TYPE=1
+
+	
+group by 1,2,3
+
+----------------------------------------------------------
+
+insert into mobile2fpr2_voice
+select
+   tmp.cont_subscr_no,
+   month('20191201'::date) voice_MTH,
+   year('20191201'::date)  voice_YR,
+   sum(C.PRIMARY_UNITS) voice_sec,
+   sum(NVL(C.CHARGED_AMOUNT,0)/100 - NVL(C.TOTAL_TAX,0)/100)  voice_REVENUE
+
+ from 
+    mobile2for_accounts tmp
+	 join 
+    ADMIN.CDR_DATA C on c.SUBSCR_NO = tmp.cont_subscr_no and date(c.TRANS_DT)  between '20191201'::date and '20191231'::date
+	and c.APPLICATION_ID  =1 and EXTERNAL_ID_TYPE=1
+
+	
+group by 1,2,3
+
+----------------------------------------------------------
+insert into mobile2for_accounts_FINAL
+select 
+
+	A.*,
+	12 as MTH,
+	2019 as YTR 
+	
+FROM
+  mobile2for_accounts A
+
+
+-----------------------------------------------------------
+
+  create table tmp_2for2_dashboard_FINAL as
+ select
+  distinct
+  A.ACCOUNT_NO, 
+  A.DISPLAY_VALUE,
+  A.CONTACT_CNO, 
+  A.cont_subscr_no,
+  A.YTR, 
+  A.MTH,
+  B.NO_SERVICE,  
+  B.PLAN_LENGTH, 
+  B.PLAN_COST,
+  C.BILLEDREVENUE,
+  D.DATA_BYTES, 
+  D.DATA_REVENUE,
+  F.VOICE_SEC, 
+  F.VOICE_REVENUE, 
+  E.SMS, 
+  E.SMS_REVENUE 
+  
+ from 
+  mobile2for_accounts_FINAL A
+  left join
+  mobile2fpr2_RC B on A.ACCOUNT_NO = B.ACCOUNT_NO and A.YTR=B.RC_YR and A.MTH = B.RC_MTH
+  left join 
+    mobile2fpr2_BILL C on  C.OFFER_ID = A.OFFER_ID and C.SUBSCR_NO = A.SUBSCR_NO and A.YTR=c.BILL_YR and A.MTH = C.BILL_MTH
+  left join
+    mobile2fpr2_DATA D on A.CONT_SUBSCR_NO = D.CONT_SUBSCR_NO and A.YTR= d.DATA_YR and A.MTH = d.DATA_MTH  
+  left join
+    mobile2fpr2_sms E on A.CONT_SUBSCR_NO = E.CONT_SUBSCR_NO and A.YTR= E.sms_YR and A.MTH = e.sms_MTH  
+  left join
+    mobile2fpr2_voice F on A.CONT_SUBSCR_NO = F.CONT_SUBSCR_NO and A.YTR= F.voice_YR and A.MTH = f.voice_MTH 
+    
+where B.NO_SERVICE > 0
+  ;
+
+
+
+  --------------------------------------------------------------------------------
+   select A.OFFER_ID, O.DISPLAY_VALUE
+ from  RC
+ JOIN 
+ ADMIN.OFFER_INST  A on RC.BILLING_ACCOUNT_NO = A.ACCOUNT_NO
+INNER JOIN
+OFFER_VALUES O ON A.OFFER_ID=O.OFFER_ID AND RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM OFFER_VALUES)
+ 
+ where PARENT_SUBSCR_NO='1745166'AND DATE(RC.APPLY_DATE) BETWEEN '20190401'::date AND '20190430'::date limit 10;
+ -------------------------------------------------------------
+ select BILLING_ACCOUNT_NO, PARENT_ACCOUNT_NO, PARENT_SUBSCR_NO, NUM_DAYS, AMOUNT/100 cost, OFFER_ID  from RC
+ where PARENT_SUBSCR_NO = '3109861'  AND DATE(RC.APPLY_DATE) BETWEEN '20190401'::date AND '20190430'::date
+ 
+select * from OFFER_VALUES where offer_id=10387 AND RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM OFFER_VALUES) limit 10;
+
+-----------------------------------------------------------------------------------
+
+create table tmp_2for2_dashboard_FINAL_1 as 
+ select
+  distinct
+  A.ACCOUNT_NO, 
+  case when A.DISPLAY_VALUE like '%Flaming%' then 'Blaze Flaming'
+     when A.DISPLAY_VALUE like '%Ignite%' then 'Blaze Ignite'
+	 when A.DISPLAY_VALUE like '%Inferno%' then 'Blaze Inferno'
+	 when A.DISPLAY_VALUE like '%Blaze%' then 'Blaze Other'
+	 when A.DISPLAY_VALUE like '%Gold%' then 'DSL Gold'
+	 when A.DISPLAY_VALUE like '%Silver%' then 'DSL Silver'
+	 when A.DISPLAY_VALUE like '%Bronze%' then 'DSL Bronze'
+	 when A.DISPLAY_VALUE like '%DSL%' then 'DSL Other'
+	 ELSE 'Other'
+  END DISPLAY_VALUE,
+  A.CONTACT_CNO, 
+  case when substr(A.CONTACT_CNO, 1,6) in (select PREFIX_LONG from DIGICEL_PREFIXES) then 'DIGICEL Mobile'
+        when substr(A.CONTACT_CNO, 1,6) in (select PREFIX_LONG from GTT_PREFIXES) then 'GTT Mobile'
+		ELSE 'OTHER'
+	END CURRENT_CONTACT,
+  A.cont_subscr_no,
+  A.YTR, 
+  A.MTH,
+  B.S_COUNT NO_SERVICE,
+  B.REVENUE_PREPAID,
+  b.TAX_PREPAID,
+  B.CHARGED_AMOUNT,
+  B.PLAN_LENGTH, 
+  B.PLAN_COST,
+  B.REVENUE_PLAN,
+  B.REVENUE_VOICE,
+  B.REVENUE_SMS,
+  B.REVENUE_DATA,
+  B.TAX_PLAN,
+  B.TAX_VOICE,
+  B.TAX_SMS,
+  B.TAX_DATA,
+  C.BILLEDREVENUE,
+  D.DATA_BYTES, 
+  F.VOICE_SEC, 
+  E.SMS 
+
+  
+ from 
+  mobile2for_accounts_FINAL A
+  left join
+  mobile2fpr2_RC B on A.CONT_SUBSCR_NO = B.SUBSCR_NO and A.YTR=B.RC_YEAR and A.MTH = B.RC_MTH
+  left join 
+    mobile2fpr2_BILL C on  C.OFFER_ID = A.OFFER_ID and C.SUBSCR_NO = A.SUBSCR_NO and A.YTR=c.BILL_YR and A.MTH = C.BILL_MTH
+  left join
+    mobile2fpr2_DATA D on A.CONT_SUBSCR_NO = D.CONT_SUBSCR_NO and A.YTR= d.DATA_YR and A.MTH = d.DATA_MTH  
+  left join
+    mobile2fpr2_sms E on A.CONT_SUBSCR_NO = E.CONT_SUBSCR_NO and A.YTR= E.sms_YR and A.MTH = e.sms_MTH  
+  left join
+    mobile2fpr2_voice F on A.CONT_SUBSCR_NO = F.CONT_SUBSCR_NO and A.YTR= F.voice_YR and A.MTH = f.voice_MTH 
+    
+--where B.S_COUNT > 0
+  ;
+
+  -------------------------------------------------------------------------------------
+https://atniazure-my.sharepoint.com/personal/nchopra_atni_com/_layouts/15/onedrive.aspx?e=5%3ad89ae196519645459d52d95207fa9d75&at=9&id=%2fpersonal%2fnchopra_atni_com%2fDocuments%2fMFS&FolderCTID=0x01200045830F802CD0204E98E5DB67356A5280
+
+gtt_reporting
+MEHSTnsr_902

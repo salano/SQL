@@ -1,0 +1,131 @@
+ 
+
+-----  To Be Sent on 8th of month
+----- Email from Stacy (Sat 8/17/2019 8:41 PM)  to include all Eligible customers regardless of their email status
+----- 2020-05-13 -   Modified script to consider unbilled adjustments 
+DROP TABLE    tmpcustY01_10;
+DROP TABLE    tmpcustY011_10;
+DROP TABLE    tmpcustY02_10;
+DROP TABLE    tmpcustY03_10;
+DROP TABLE    tmpcustY033_10;
+DROP TABLE    tmpcustY04_10;
+DROP TABLE    tmpcustY05_10;
+DROP TABLE    tmpcustY06_10;
+DROP TABLE    tmpcustY06_101;
+DROP TABLE    tmpcustY06_401;
+DROP TABLE    tmpcustY06_all;
+ DROP TABLE tmpcustomerx;
+ CREATE TABLE tmpcustomerx AS SELECT   /*+ parallel(a,8)*/ account_no,  external_id, subscr_no, external_id_type  FROM external_id_equip_map@main1 a  WHERE SUBSTR(external_id,1,3) = '592' AND external_id_type IN(1,9,11,37,39)  AND inactive_date IS NULL and inventory_id is not null;
+ 
+----- Extract all accounts successfully bipped
+CREATE TABLE    tmpcustY01_10 AS SELECT  /*+ parallel(a,8)*/ a.* FROM bill_invoice a WHERE backout_status = 0 AND prep_error_code IS NULL AND prep_status = 1 AND TRUNC(statement_date ) = 
+TRUNC(sysdate,'MM')  AND bill_period = 'DS1'    AND account_no IN(SELECT account_no FROM tmpcustomerx );
+---- extract all account balances from cmf balance
+CREATE TABLE    tmpcustY011_10 AS SELECT   /*+ parallel(a,8)*/ a.*, NVL( b.total_due,0) /100 AS total_due , NVL(new_charges,0)/100 AS current_charges FROM  tmpcustY01_10 a LEFT JOIN cmf_balance b ON a.bill_ref_no = b.bill_ref_no ;
+---- ensure only active   accounts are selected
+ CREATE TABLE   tmpcustY03_10 AS SELECT /*+ parallel(a,8)*/ a.*, external_id, external_id_type FROM  tmpcustY011_10 a LEFT JOIN  tmpcustomerx b ON a. account_no = b. account_no WHERE b . account_no IS NOT NULL ;
+ ---- extract account_category value
+CREATE TABLE    tmpcustY033_10 AS SELECT /*+ parallel(a,8)*/ a.*, CASE
+  WHEN account_category  IN(9,10)  THEN bill_fname|| ' '||bill_lname
+  ELSE bill_company
+  END
+  NAME, account_category FROM    tmpcustY03_10 a LEFT JOIN cmf b ON a. account_no = b.account_no WHERE b.account_no IS NOT NULL ;
+--- Extract all Adjustments
+drop table tmpcustY034_99;
+create table tmpcustY034_99 as
+select   /*+ parallel(a,8)*/   a.*  from adj a where bill_ref_no = 0  and no_bill = 0   ;
+ 
+---- Summarise adjustments
+drop table tmpcustY035_99;
+create table tmpcustY035_99 as
+select account_no, sum(amount_postpaid + total_tax_postpaid)/100 as total_adjusts from tmpcustY034_99 group by account_no  order by account_no;
+-- extract only eligible payments
+CREATE TABLE    tmpcustY04_10 AS SELECT /*+ parallel(a,8)*/ b .account_no , b. bill_ref_no,       b . trans_amount / 100 AS trans_amount , trans_date, post_date, trans_submitter ,  b. tracking_id, b.action_code FROM  tmpcustY033_10 @ cust1 a LEFT JOIN bmf @ cust1 b
+ON a. account_no = b .account_no  WHERE   b.no_bill = 0 AND  post_date > prep_date AND   bmf_trans_type NOT IN(16,33,51,52,53,80,90)  and action_code not in('DEL','REV');
+ -- summarize payments
+CREATE TABLE    tmpcustY05_10 AS SELECT /*+ parallel(a,8)*/ account_no , SUM( trans_amount ) AS amount FROM  tmpcustY04_10 a GROUP BY account_no ORDER BY account_no ;
+CREATE TABLE    tmpcustY06_10 AS SELECT /*+ parallel(a,8)*/ a.*,NVL( b .amount , 0 ) AS amount , NVL( c .total_adjusts, 0 ) AS total_adjusts,  total_due - (NVL( b .amount , 0)  + NVL( c .total_adjusts, 0 ))     AS dnpbal FROM    tmpcustY033_10 a LEFT JOIN  tmpcustY05_10 b ON a. account_no = b.account_no left join tmpcustY035_99 c on a.account_no= c.account_no;
+ 
+CREATE TABLE    tmpcustY06_101  AS SELECT /*+ parallel(a,8)*/ account_no , external_id , DECODE( external_id_type , 1 , 'MOBILE' , 9, 'LANDLINE', 11 , 'DSL', 27, 'LEASEDLINE' ,37,'GPON', 39,'GPON') AS TYPE ,NAME, display_value AS description,  total_due, current_charges, amount AS total_payments, dnpbal ,'10 Days Collection Cycle' AS CYCLE
+  FROM  tmpcustY06_10 a LEFT JOIN account_category_values b ON a. account_category = b.account_category WHERE service_version_id IN(SELECT MAX(service_version_id ) FROM service_version);
+ 
+----------------------------
+DROP TABLE    tmpcustY01_40;
+DROP TABLE    tmpcustY011_40;
+DROP TABLE    tmpcustY02_40;
+DROP TABLE    tmpcustY03_40;
+DROP TABLE    tmpcustY033_40;
+DROP TABLE    tmpcustY04_40;
+DROP TABLE    tmpcustY05_40;
+DROP TABLE    tmpcustY06_40;
+DROP TABLE    tmpcustY06_401; /* already dropped */
+ 
+-- extract all accounts successfully bipped
+CREATE TABLE    tmpcustY01_40 AS SELECT /*+ parallel(a,8)*/ a.* FROM bill_invoice a WHERE backout_status = 0 AND prep_error_code IS NULL AND prep_status = 1 AND TRUNC(statement_date ) =      ADD_MONTHS( TRUNC(sysdate,'MM'), -1 ) AND bill_period = '2'   AND account_no IN(SELECT account_no FROM tmpcustomerx);
+-- extract > 1500 accounts from cmf balance
+CREATE TABLE    tmpcustY011_40 AS SELECT   /*+ parallel(a,8)*/ a.*, NVL(b.total_due,0) /100 AS total_due, NVL(net_new_charges,0)/100  AS current_charges  FROM  tmpcustY01_40 a LEFT JOIN cmf_balance b ON a.bill_ref_no = b.bill_ref_no ;
+-- ensure only active dsl accounts are selected
+ CREATE TABLE   tmpcustY03_40 AS SELECT /*+ parallel(a,8)*/ a.*, external_id, external_id_type FROM  tmpcustY011_40 a LEFT JOIN  tmpcustomerx b  ON a. account_no = b. account_no WHERE b . account_no IS NOT NULL ;
+ -- extract account_category value
+CREATE TABLE    tmpcustY033_40 AS SELECT /*+ parallel(a,8)*/ a.*,CASE
+  WHEN account_category  IN(9,10)  THEN bill_fname|| ' '||bill_lname
+  ELSE bill_company
+  END
+  NAME, account_category FROM    tmpcustY03_40 a LEFT JOIN cmf b ON a. account_no = b.account_no WHERE b.account_no IS NOT NULL ;
+-- extract only eligible payments
+CREATE TABLE    tmpcustY04_40 AS SELECT /*+ parallel(a,8)*/ b .account_no , b. bill_ref_no, b . trans_amount / 100 AS trans_amount , trans_date, post_date, trans_submitter ,  b. tracking_id, b.action_code FROM  tmpcustY033_40 @ cust1 a LEFT JOIN bmf @ cust1 b
+ON a. account_no = b .account_no  WHERE  b.no_bill = 0 AND post_date > prep_date  AND bmf_trans_type NOT IN(16,33,51,52,53,80,90)  and action_code not in('DEL','REV');
+ -- summarize payments
+CREATE TABLE    tmpcustY05_40 AS SELECT /*+ parallel(a,8)*/ account_no , SUM( trans_amount ) AS amount FROM  tmpcustY04_40 GROUP BY account_no ORDER BY account_no ;
+CREATE TABLE    tmpcustY06_40 AS SELECT /*+ parallel(a,8)*/ a.*,NVL( b .amount , 0 ) AS amount , NVL( c .total_adjusts, 0 ) AS total_adjusts,  total_due - (NVL( b .amount , 0)  + NVL( c .total_adjusts, 0 ))   AS dnpbal FROM    tmpcustY033_40 a LEFT JOIN  tmpcustY05_40 b ON a. account_no = b.account_no left join tmpcustY035_99 c on a.account_no= c.account_no;
+ 
+CREATE TABLE    tmpcustY06_401  AS SELECT /*+ parallel(a,8)*/ account_no , external_id , DECODE( external_id_type , 1 , 'MOBILE' , 9, 'LANDLINE', 11 , 'DSL', 27, 'LEASEDLINE', 37,'GPON',39,'GPON' ) AS TYPE ,NAME, display_value AS description,  total_due, current_charges, amount AS total_payments, dnpbal ,'40 Days Collection Cycle' AS CYCLE
+  FROM  tmpcustY06_40 a LEFT JOIN account_category_values b ON a. account_category = b.account_category WHERE service_version_id IN(SELECT MAX(service_version_id ) FROM service_version);
+-- Merge files for both collection cycles
+ 
+CREATE TABLE    tmpcustY06_all AS
+SELECT * FROM    tmpcustY06_101
+UNION
+SELECT * FROM    tmpcustY06_401  ;
+ 
+ --- DROP TABLE  tmpbilldnpbal;
+ --- CREATE TABLE  tmpbilldnpbal AS SELECT  /*+ parallel(a,8)*/ a.*,  contact1_phone,  cust_email  FROM  tmpcustY06_all a JOIN cmf b ON a.account_no = b.account_no WHERE cust_email LIKE '%@%'
+ --- AND contact1_phone IS NOT NULL  ;
+ 
+----- Changed to consider all accounts regardless of email status
+ DROP TABLE  tmpbilldnpbal;
+ CREATE TABLE  tmpbilldnpbal AS SELECT /*+ parallel(a,8)*/ a.*,  contact1_phone,  cust_email  FROM  tmpcustY06_all a JOIN cmf b ON a.account_no = b.account_no ;
+ 
+ -- format the contact numbers
+  UPDATE /*+ parallel(a,8)*/ tmpbilldnpbal a SET contact1_phone =   trim(contact1_phone) ;
+  COMMIT;
+ 
+ 
+--  remove spaces from phone numbers
+UPDATE /*+ parallel(a,8)*/ tmpbilldnpbal a  SET contact1_phone = REPLACE(contact1_phone, ' ')  WHERE contact1_phone LIKE '% %' ;
+COMMIT;
+-- remove dashes
+UPDATE  /*+ parallel(a,8)*/ tmpbilldnpbal a  SET contact1_phone = REPLACE(contact1_phone, '-')  WHERE contact1_phone LIKE '%-%' ;
+COMMIT;
+-- remove slashes
+UPDATE  /*+ parallel(a,8)*/ tmpbilldnpbal a SET contact1_phone = REPLACE(contact1_phone, '/')  WHERE contact1_phone LIKE '%/%' ;
+COMMIT;
+--- remove underscore
+UPDATE  /*+ parallel(a,8)*/ tmpbilldnpbal a  SET contact1_phone = REPLACE(contact1_phone, '_')  WHERE contact1_phone LIKE '%_%' ;
+COMMIT;
+  UPDATE  /*+ parallel(a,8)*/ tmpbilldnpbal a  SET contact1_phone = REPLACE(contact1_phone, '.')  WHERE contact1_phone LIKE '%.%' ;
+COMMIT;
+   UPDATE  /*+ parallel(a,8)*/ tmpbilldnpbal a SET contact1_phone = REPLACE(contact1_phone, ';')  WHERE contact1_phone LIKE '%;%' ;
+COMMIT;
+--- DELETE FROM tmpbilldnpbal WHERE TRANSLATE(contact1_phone, 'x0123456789', 'x') IS NOT NULL;
+--- COMMIT;
+-- add 592 if missing
+UPDATE /*+ parallel(a,8)*/ tmpbilldnpbal a  SET contact1_phone = '592'||trim(contact1_phone)  WHERE  LENGTH(trim(contact1_phone)) < 10  AND SUBSTR(trim(contact1_phone),1,3) <> '592';
+ COMMIT;
+DROP TABLE tmpbillref_no;
+CREATE TABLE tmpbillref_no AS SELECT /*+ parallel(a,8)*/ account_no, bill_Ref_no FROM bill_invoice a WHERE prep_error_code IS NULL AND  prep_status = 1 AND backout_status = 0
+AND statement_date = TRUNC(sysdate,'MM' );
+DROP TABLE tmpbilldnpbalfnl;
+CREATE TABLE tmpbilldnpbalfnl AS SELECT /*+ parallel(a,8)*/ bill_ref_no, a.*  FROM tmpbilldnpbal a LEFT JOIN  tmpbillref_no b ON a.account_no  = b.account_no;
+delete from tmpbilldnpbalfnl where (type = 'GPON' and dnpbal <500  or type <> 'GPON' and dnpbal <1500);
+commit;

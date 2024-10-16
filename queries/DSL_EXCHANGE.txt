@@ -1,0 +1,312 @@
+SELECT 
+   c.ACCOUNT_NO,
+  eip.EXTERNAL_ID AS Phone,
+  c.BILL_FNAME,
+  BILL_LNAME,
+  BILL_COMPANY,
+  BILL_ADDRESS1,
+  BILL_ADDRESS2,
+  BILL_ADDRESS3,
+  BILL_ADDRESS4,
+  BILL_STATE,
+  BILL_ZIP,
+  BILL_COUNTY,
+  to_char(BME.TRANS_DATE,'YYYY-MM') as TRANS_MONTH,
+  BME.TRANS_AMOUNT/100  as AMOUNT
+FROM
+  CMF c LEFT join
+  EXTERNAL_ID_EQUIP_MAP@read_main1 eip on c.ACCOUNT_NO = eip.ACCOUNT_NO 
+  LEFT JOIN 
+  BMF BME ON c.ACCOUNT_NO = BME.ACCOUNT_NO
+  
+WHERE trunc(BME.TRANS_DATE) between to_date('2019-01-01','YYYY-MM-DD') and to_date('2020-10-31','YYYY-MM-DD')
+--AND eip.EXTERNAL_ID_TYPE = 11      
+AND eip.EXTERNAL_ID IN( 
+   select tel_number from tmp_DSL_account
+)
+
+;
+select * from EXTERNAL_ID_EQUIP_MAP@read_main1 where --rownum <=3;
+EXTERNAL_ID IN( 
+   select trim(tel_number) from tmp_DSL_account
+)
+and rownum <=3;
+
+
+-------------------------------------------------------------------------------------------------
+drop TABLE tmp_DSL_account;
+CREATE TABLE tmp_DSL_account
+( 
+  tel_number varchar(13) NOT NULL
+);
+
+-------------------------------------------------------------------
+SELECT
+  ACCOUNT_NO,
+Phone,
+  BILL_FNAME,
+  BILL_LNAME,
+  BILL_COMPANY,
+  BILL_ADDRESS1,
+  BILL_ADDRESS2,
+  BILL_ADDRESS3,
+  BILL_ADDRESS4,
+  BILL_STATE,
+  BILL_ZIP,
+  BILL_COUNTY,
+  service_name,
+  exchange,
+
+  avg( AMOUNT) PAYMENTS
+from
+
+(
+
+SELECT 
+   c.ACCOUNT_NO,
+  eip.EXTERNAL_ID AS Phone,
+  c.BILL_FNAME,
+  BILL_LNAME,
+  BILL_COMPANY,
+  BILL_ADDRESS1,
+  BILL_ADDRESS2,
+  BILL_ADDRESS3,
+  BILL_ADDRESS4,
+  BILL_STATE,
+  BILL_ZIP,
+  BILL_COUNTY,
+  serv.service_name,
+  serv.exchange,
+  to_char(BME.TRANS_DATE,'YYYY-MM') as TRANS_MONTH,
+  sum(BME.TRANS_AMOUNT/100)  as AMOUNT
+FROM
+  CMF c LEFT join
+  EXTERNAL_ID_EQUIP_MAP@read_main1 eip on c.ACCOUNT_NO = eip.ACCOUNT_NO 
+  LEFT JOIN 
+  BMF BME ON c.ACCOUNT_NO = BME.ACCOUNT_NO
+  LEFT JOIN tmp_DSL_account_SERVICE SERV ON eip.EXTERNAL_ID = serv.tel_number
+  /*LEFT JOIN ( 
+   select distinct EXCHANGE as EXCHANGE  from tmp_DSL_account_SERVICE A  join tmp_DSL_account B on A.tel_number = trim(b.tel_number)
+) sub on serv.exchange =  sub.EXCHANGE
+  */
+WHERE trunc(BME.TRANS_DATE) between to_date('2019-01-01','YYYY-MM-DD') and to_date('2020-10-31','YYYY-MM-DD')
+AND eip.EXTERNAL_ID_TYPE = 11      
+AND BME.NO_BILL = 0 
+AND BME.TRANS_AMOUNT/100 > 2 AND BME.BMF_TRANS_TYPE NOT IN(16,33,51,52,53,80,90)
+GROUP BY  
+  c.ACCOUNT_NO,  eip.EXTERNAL_ID, c.BILL_FNAME, BILL_LNAME, BILL_COMPANY, BILL_ADDRESS1, BILL_ADDRESS2, BILL_ADDRESS3, BILL_ADDRESS4, BILL_STATE, BILL_ZIP, BILL_COUNTY,
+  serv.service_name,
+  serv.exchange,
+  to_char(BME.TRANS_DATE,'YYYY-MM')
+  
+) sub
+group by
+  ACCOUNT_NO,
+Phone,
+  BILL_FNAME,
+  BILL_LNAME,
+  BILL_COMPANY,
+  BILL_ADDRESS1,
+  BILL_ADDRESS2,
+  BILL_ADDRESS3,
+  BILL_ADDRESS4,
+  BILL_STATE,
+  BILL_ZIP,
+  BILL_COUNTY,
+  service_name,
+  exchange
+order by
+  exchange
+;
+
+------------------------------------------------------
+SELECT
+  ACCOUNT_NO,
+Phone,
+  BILL_FNAME,
+  BILL_LNAME,
+  BILL_COMPANY,
+  BILL_ADDRESS1,
+  BILL_ADDRESS2,
+  BILL_ADDRESS3,
+  BILL_ADDRESS4,
+  BILL_STATE,
+  BILL_ZIP,
+  BILL_COUNTY,
+  service_name,
+  exchange,
+
+  avg( AMOUNT) PAYMENTS
+from
+
+(
+
+SELECT 
+   c.ACCOUNT_NO,
+  eip.EXTERNAL_ID AS Phone,
+  c.BILL_FNAME,
+  BILL_LNAME,
+  BILL_COMPANY,
+  BILL_ADDRESS1,
+  BILL_ADDRESS2,
+  BILL_ADDRESS3,
+  BILL_ADDRESS4,
+  BILL_STATE,
+  BILL_ZIP,
+  BILL_COUNTY,
+  serv.service_name,
+  serv.exchange,
+  to_char(BME.TRANS_DATE,'YYYY-MM') as TRANS_MONTH,
+  sum(BME.TRANS_AMOUNT/100)  as AMOUNT
+FROM
+  CMF c LEFT join
+  EXTERNAL_ID_EQUIP_MAP@read_main1 eip on c.ACCOUNT_NO = eip.ACCOUNT_NO 
+  LEFT JOIN 
+  BMF BME ON c.ACCOUNT_NO = BME.ACCOUNT_NO
+  LEFT JOIN tmp_DSL_account_SERVICE SERV ON eip.EXTERNAL_ID = serv.tel_number
+  
+WHERE trunc(BME.TRANS_DATE) between to_date('2019-01-01','YYYY-MM-DD') and to_date('2020-10-31','YYYY-MM-DD')
+AND eip.EXTERNAL_ID_TYPE = 11      
+AND serv.exchange not IN( 
+   select distinct EXCHANGE from tmp_DSL_account_SERVICE A  join tmp_DSL_account B on A.tel_number = trim(b.tel_number)
+)
+AND BME.NO_BILL = 0 
+AND BME.TRANS_AMOUNT/100 > 2 AND BME.BMF_TRANS_TYPE NOT IN(16,33,51,52,53,80,90)
+GROUP BY  
+  c.ACCOUNT_NO,  eip.EXTERNAL_ID, c.BILL_FNAME, BILL_LNAME, BILL_COMPANY, BILL_ADDRESS1, BILL_ADDRESS2, BILL_ADDRESS3, BILL_ADDRESS4, BILL_STATE, BILL_ZIP, BILL_COUNTY,
+  serv.service_name,
+  serv.exchange,
+  to_char(BME.TRANS_DATE,'YYYY-MM')
+  
+) sub
+group by
+  ACCOUNT_NO,
+Phone,
+  BILL_FNAME,
+  BILL_LNAME,
+  BILL_COMPANY,
+  BILL_ADDRESS1,
+  BILL_ADDRESS2,
+  BILL_ADDRESS3,
+  BILL_ADDRESS4,
+  BILL_STATE,
+  BILL_ZIP,
+  BILL_COUNTY,
+  service_name,
+  exchange
+order by
+  exchange
+;
+
+select * from EXTERNAL_ID_EQUIP_MAP@read_main1 where --rownum <=3;
+EXTERNAL_ID IN( 
+   select trim(tel_number) from tmp_DSL_account
+)
+and rownum <=3;
+
+
+-------------------------------------------------------------------------------------------------
+drop TABLE tmp_DSL_account;
+CREATE TABLE tmp_DSL_account
+( 
+  tel_number varchar(13) NOT NULL
+);
+-------------------------------------------------------
+drop TABLE tmp_DSL_account_SERVICE;
+CREATE TABLE tmp_DSL_account_SERVICE
+( 
+  tel_number varchar(13) NOT NULL,
+  SERVICE_NAME varchar(40) NOT NULL,
+  EXCHANGE varchar(40) NOT NULL
+);
+
+
+select distinct EXCHANGE from tmp_DSL_account_SERVICE A  join tmp_DSL_account B on A.tel_number = trim(b.tel_number)
+
+select * from tmp_DSL_account_SERVICE
+
+----------------------------------------------------------------------------
+SELECT
+  ACCOUNT_NO,
+Phone,
+  BILL_FNAME,
+  BILL_LNAME,
+  BILL_COMPANY,
+  BILL_ADDRESS1,
+  BILL_ADDRESS2,
+  BILL_ADDRESS3,
+  BILL_ADDRESS4,
+  BILL_STATE,
+  BILL_ZIP,
+  BILL_COUNTY,
+  service_name,
+  exchange,
+
+  round(avg( AMOUNT),2) PAYMENTS
+from
+
+(
+
+
+select
+  C.ACCOUNT_NO,
+  Phone,
+  BILL_FNAME,
+  BILL_LNAME,
+  BILL_COMPANY,
+  BILL_ADDRESS1,
+  BILL_ADDRESS2,
+  BILL_ADDRESS3,
+  BILL_ADDRESS4,
+  BILL_STATE,
+  BILL_ZIP,
+  BILL_COUNTY,
+  service_name,
+  exchange,
+  to_char(BME.TRANS_DATE,'YYYY-MM') as TRANS_MONTH,
+  sum(BME.TRANS_AMOUNT/100)  as AMOUNT
+from 
+     tmp_DSL_ACCOUNT_CUSTOMERS C
+     left join BMF BME ON c.ACCOUNT_NO = BME.ACCOUNT_NO
+WHERE 
+    trunc(BME.TRANS_DATE) between to_date('2019-01-01','YYYY-MM-DD') and to_date('2020-10-31','YYYY-MM-DD')
+    AND BME.NO_BILL = 0 
+    AND BME.TRANS_AMOUNT/100 > 2 AND BME.BMF_TRANS_TYPE NOT IN(16,33,51,52,53,80,90)
+group by
+  C.ACCOUNT_NO,
+  Phone,
+  BILL_FNAME,
+  BILL_LNAME,
+  BILL_COMPANY,
+  BILL_ADDRESS1,
+  BILL_ADDRESS2,
+  BILL_ADDRESS3,
+  BILL_ADDRESS4,
+  BILL_STATE,
+  BILL_ZIP,
+  BILL_COUNTY,
+  service_name,
+  exchange,
+  to_char(BME.TRANS_DATE,'YYYY-MM')
+  
+) sub
+group by
+  ACCOUNT_NO,
+Phone,
+  BILL_FNAME,
+  BILL_LNAME,
+  BILL_COMPANY,
+  BILL_ADDRESS1,
+  BILL_ADDRESS2,
+  BILL_ADDRESS3,
+  BILL_ADDRESS4,
+  BILL_STATE,
+  BILL_ZIP,
+  BILL_COUNTY,
+  service_name,
+  exchange
+order by
+  exchange
+;
+    
+        

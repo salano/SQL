@@ -1,0 +1,33 @@
+
+SELECT 
+	a.ACCOUNT_NO,
+	a.external_id AS calling, 
+	a.point_target AS called,    
+	date ( a.trans_dt ) AS call_date,
+	TO_CHAR (trans_dt , 'hh24:mi:ss' ) AS start_time,  
+	b.description,
+	a.amount_postpaid/ 100 AS COST, 
+	a.total_tax_postpaid/100 AS tax ,
+  (( a.amount_postpaid/ 100 ) + nvl((total_tax_postpaid/100),0) ) AS total_cost ,
+  DECODE( a.application_id, 1,'Voice Call' ,2, 'SMS',7 ,'DATA') AS type_of_usage,
+  a.application_id,
+  CASE WHEN a.application_id = 1 THEN  CEIL (rated_units / 60)  END duration_mins,
+  CASE WHEN a.application_id = 7 THEN  CEIL (rated_units / 1024)  END data_usage_kb
+  
+	
+FROM 
+	ATNI_PROD.GTT_REPORTING.CDR_DATA  a
+	LEFT JOIN ATNI_PROD.GTT_REPORTING.aut_final_values b ON a.aut_id = b. aut_id  
+WHERE 
+	POINT_ORIGIN LIKE '%6231450%'
+	AND date(a.TRANS_DT) BETWEEN to_date('2018-06-01','YYYY-MM-DD') AND to_date('2018-06-30','YYYY-MM-DD')
+	--AND a.amount_postpaid > 0
+	AND b.reseller_version_id IN(SELECT MAX(reseller_version_id) FROM ATNI_PROD.GTT_REPORTING.reseller_version)
+ORDER BY
+	date ( a.trans_dt ),
+	TO_CHAR (trans_dt , 'hh24:mi:ss' )
+	
+	
+	
+SELECT AUT_ID FROM ATNI_PROD.GTT_REPORTING.CDR_DATA  LIMIT 100;
+SELECT * FROM ATNI_PROD.GTT_REPORTING.aut_final_values  LIMIT 100;

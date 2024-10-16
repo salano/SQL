@@ -1,0 +1,282 @@
+select
+c.name As "DB_NAME"
+,a.username AS "User_ID"
+,a.account_status AS "Status"
+,e.FULL_NAME AS "First_Name_and_Last_Name"
+,e.EMPLOYEE_ID AS "Employee_ID"
+,e.DEPT AS "Job_Title"
+,f.GRANTED_ROLE AS "Permission_Access_Role"
+,a.LOCK_DATE AS "Date_Last_Status_Change"
+,a.created AS "Date_created"
+,a.profile AS "Permission_Access_Profile"
+,max(d.ptime) AS "Date_Last_Password_Change"
+,max(b.timestamp) AS "LAST_LOGIN_TIME"
+,sysdate AS "DATA_FETCH_TIME_IN_TABLE"
+from
+v$database c,
+sys.user$ d,
+cbs_owner.DEPART_LIST e,
+dba_role_privs f,
+dba_users a left join dba_audit_trail b
+on a.username=b.username
+where
+d.name=a.username
+and e.USERNAME=a.username
+and f.grantee=a.username
+group by c.name,a.username,a.account_status,e.FULL_NAME,e.EMPLOYEE_ID,e.DEPT,f.GRANTED_ROLE,a.LOCK_DATE,a.created,a.profile,d.ptime
+
+---------------
+
+select
+c.name As "DB_NAME"
+,a.username AS "User_ID"
+,a.account_status AS "Status"
+,e.FULL_NAME AS "First_Name_and_Last_Name"
+,e.EMPLOYEE_ID AS "Employee_ID"
+,e.DEPT AS "Job_Title"
+,f.GRANTED_ROLE AS "Permission_Access_Role"
+,a.LOCK_DATE AS "Date_Last_Status_Change"
+,a.created AS "Date_created"
+,a.profile AS "Permission_Access_Profile"
+,max(d.ptime) AS "Date_Last_Password_Change"
+,max(b.timestamp) AS "LAST_LOGIN_TIME"
+,sysdate AS "DATA_FETCH_TIME_IN_TABLE"
+from
+v$database@READ_BLUS c,
+sys.user$@READ_BLUS d,
+cbs_owner.DEPART_LIST e,
+dba_role_privs@READ_BLUS f,
+dba_users@READ_BLUS a left join dba_audit_trail@READ_BLUS b
+on a.username=b.username
+where
+d.name=a.username
+and e.USERNAME=a.username
+and f.grantee=a.username
+group by c.name,a.username,a.account_status,e.FULL_NAME,e.EMPLOYEE_ID,e.DEPT,f.GRANTED_ROLE,a.LOCK_DATE,a.created,a.profile,d.ptime
+
+------------------------------
+
+select
+c.name As "DB_NAME"
+,a.username AS "User_ID"
+,a.account_status AS "Status"
+,e.FULL_NAME AS "First_Name_and_Last_Name"
+,e.EMPLOYEE_ID AS "Employee_ID"
+,e.DEPT AS "Job_Title"
+,f.GRANTED_ROLE AS "Permission_Access_Role"
+,a.LOCK_DATE AS "Date_Last_Status_Change"
+,a.created AS "Date_created"
+,a.profile AS "Permission_Access_Profile"
+,max(d.ptime) AS "Date_Last_Password_Change"
+,max(b.timestamp) AS "LAST_LOGIN_TIME"
+,sysdate AS "DATA_FETCH_TIME_IN_TABLE"
+from
+v$database@READ_WP1 c,
+sys.user$@READ_WP1 d,
+cbs_owner.DEPART_LIST e,
+dba_role_privs@READ_WP1 f,
+dba_users@read_dmdb a left join dba_audit_trail@READ_WP1 b
+on a.username=b.username
+where
+d.name=a.username
+and e.USERNAME=a.username
+and f.grantee=a.username
+group by c.name,a.username,a.account_status,e.FULL_NAME,e.EMPLOYEE_ID,e.DEPT,f.GRANTED_ROLE,a.LOCK_DATE,a.created,a.profile,d.ptime
+
+--------------------------------------
+
+select
+c.name As "DB_NAME"
+,a.username AS "User_ID"
+,a.account_status AS "Status"
+,e.FULL_NAME AS "First_Name_and_Last_Name"
+,e.EMPLOYEE_ID AS "Employee_ID"
+,e.DEPT AS "Job_Title"
+,f.GRANTED_ROLE AS "Permission_Access_Role"
+,a.LOCK_DATE AS "Date_Last_Status_Change"
+,a.created AS "Date_created"
+,a.profile AS "Permission_Access_Profile"
+,max(d.ptime) AS "Date_Last_Password_Change"
+,max(b.timestamp) AS "LAST_LOGIN_TIME"
+,sysdate AS "DATA_FETCH_TIME_IN_TABLE"
+from
+v$database@READ_CTLG c,
+sys.user$@READ_CTLG d,
+cbs_owner.DEPART_LIST e,
+dba_role_privs@READ_CTLG f,
+dba_users@READ_CTLG a left join dba_audit_trail@READ_CTLG b
+on a.username=b.username
+where
+d.name=a.username
+and e.USERNAME=a.username
+and f.grantee=a.username
+group by c.name,a.username,a.account_status,e.FULL_NAME,e.EMPLOYEE_ID,e.DEPT,f.GRANTED_ROLE,a.LOCK_DATE,a.created,a.profile,d.ptime
+
+--------------------------------
+
+select
+c.name As "DB_NAME"
+,a.username AS "User_ID"
+,a.account_status AS "Status"
+,e.FULL_NAME AS "First_Name_and_Last_Name"
+,e.EMPLOYEE_ID AS "Employee_ID"
+,e.DEPT AS "Job_Title"
+,f.GRANTED_ROLE AS "Permission_Access_Role"
+,a.LOCK_DATE AS "Date_Last_Status_Change"
+,a.created AS "Date_created"
+,a.profile AS "Permission_Access_Profile"
+,max(d.ptime) AS "Date_Last_Password_Change"
+,max(b.timestamp) AS "LAST_LOGIN_TIME"
+,sysdate AS "DATA_FETCH_TIME_IN_TABLE"
+from
+v$database@READ_PCAT c,
+sys.user$@READ_PCAT d,
+cbs_owner.DEPART_LIST e,
+dba_role_privs@READ_PCAT f,
+dba_users@READ_PCAT a left join dba_audit_trail@READ_PCAT b
+on a.username=b.username
+where
+d.name=a.username
+and e.USERNAME=a.username
+and f.grantee=a.username
+group by c.name,a.username,a.account_status,e.FULL_NAME,e.EMPLOYEE_ID,e.DEPT,f.GRANTED_ROLE,a.LOCK_DATE,a.created,a.profile,d.ptime
+
+----------------------------
+
+
+select
+c.name As "DB_NAME"
+,a.username AS "User_ID"
+,a.account_status AS "Status"
+,e.FULL_NAME AS "First_Name_and_Last_Name"
+,e.EMPLOYEE_ID AS "Employee_ID"
+,e.DEPT AS "Job_Title"
+,f.GRANTED_ROLE AS "Permission_Access_Role"
+,a.LOCK_DATE AS "Date_Last_Status_Change"
+,a.created AS "Date_created"
+,a.profile AS "Permission_Access_Profile"
+,max(d.ptime) AS "Date_Last_Password_Change"
+,max(b.timestamp) AS "LAST_LOGIN_TIME"
+,sysdate AS "DATA_FETCH_TIME_IN_TABLE"
+from
+v$database@READ_MAIN1 c,
+sys.user$@READ_MAIN1 d,
+cbs_owner.DEPART_LIST e,
+dba_role_privs@READ_MAIN1 f,
+dba_users@READ_MAIN1 a left join dba_audit_trail@READ_MAIN1 b
+on a.username=b.username
+where
+d.name=a.username
+and e.USERNAME=a.username
+and f.grantee=a.username
+group by c.name,a.username,a.account_status,e.FULL_NAME,e.EMPLOYEE_ID,e.DEPT,f.GRANTED_ROLE,a.LOCK_DATE,a.created,a.profile,d.ptime
+
+---------------
+
+select
+c.name As "DB_NAME"
+,a.username AS "User_ID"
+,a.account_status AS "Status"
+,e.FULL_NAME AS "First_Name_and_Last_Name"
+,e.EMPLOYEE_ID AS "Employee_ID"
+,e.DEPT AS "Job_Title"
+,f.GRANTED_ROLE AS "Permission_Access_Role"
+,a.LOCK_DATE AS "Date_Last_Status_Change"
+,a.created AS "Date_created"
+,a.profile AS "Permission_Access_Profile"
+,max(d.ptime) AS "Date_Last_Password_Change"
+,max(b.timestamp) AS "LAST_LOGIN_TIME"
+,sysdate AS "DATA_FETCH_TIME_IN_TABLE"
+from
+v$database@READ_WP2 c,
+sys.user$@READ_WP2 d,
+cbs_owner.DEPART_LIST e,
+dba_role_privs@READ_WP2 f,
+dba_users@READ_WP2 a left join dba_audit_trail@READ_WP2 b
+on a.username=b.username
+where
+d.name=a.username
+and e.USERNAME=a.username
+and f.grantee=a.username
+group by c.name,a.username,a.account_status,e.FULL_NAME,e.EMPLOYEE_ID,e.DEPT,f.GRANTED_ROLE,a.LOCK_DATE,a.created,a.profile,d.ptime
+
+----------------------------------
+
+select
+c.name As "DB_NAME"
+,a.username AS "User_ID"
+,a.account_status AS "Status"
+,e.FULL_NAME AS "First_Name_and_Last_Name"
+,e.EMPLOYEE_ID AS "Employee_ID"
+,e.DEPT AS "Job_Title"
+,f.GRANTED_ROLE AS "Permission_Access_Role"
+,a.LOCK_DATE AS "Date_Last_Status_Change"
+,a.created AS "Date_created"
+,a.profile AS "Permission_Access_Profile"
+,max(d.ptime) AS "Date_Last_Password_Change"
+,max(b.timestamp) AS "LAST_LOGIN_TIME"
+,sysdate AS "DATA_FETCH_TIME_IN_TABLE"
+from
+v$database@READ_XE c,
+sys.user$@READ_XE d,
+cbs_owner.DEPART_LIST e,
+dba_role_privs@READ_XE f,
+dba_users@READ_XE a left join dba_audit_trail@READ_XE b
+on a.username=b.username
+where
+d.name=a.username
+and e.USERNAME=a.username
+and f.grantee=a.username
+group by c.name,a.username,a.account_status,e.FULL_NAME,e.EMPLOYEE_ID,e.DEPT,f.GRANTED_ROLE,a.LOCK_DATE,a.created,a.profile,d.ptime
+
+------------------------------
+
+select
+c.name As "DB_NAME"
+,a.username AS "User_ID"
+,a.account_status AS "Status"
+,e.FULL_NAME AS "First_Name_and_Last_Name"
+,e.EMPLOYEE_ID AS "Employee_ID"
+,e.DEPT AS "Job_Title"
+,f.GRANTED_ROLE AS "Permission_Access_Role"
+,a.LOCK_DATE AS "Date_Last_Status_Change"
+,a.created AS "Date_created"
+,a.profile AS "Permission_Access_Profile"
+,max(d.ptime) AS "Date_Last_Password_Change"
+,max(b.timestamp) AS "LAST_LOGIN_TIME"
+,sysdate AS "DATA_FETCH_TIME_IN_TABLE"
+from
+v$database@READ_DMDB c,
+sys.user$@READ_DMDB d,
+cbs_owner.DEPART_LIST e,
+dba_role_privs@READ_DMDB f,
+dba_users@READ_WP1 a left join dba_audit_trail@READ_DMDB b
+on a.username=b.username
+where
+d.name=a.username
+and e.USERNAME=a.username
+and f.grantee=a.username
+group by c.name,a.username,a.account_status,e.FULL_NAME,e.EMPLOYEE_ID,e.DEPT,f.GRANTED_ROLE,a.LOCK_DATE,a.created,a.profile,d.ptime
+
+
+----------------------------------------------------------------------------------------------
+The above queries are used to load the system database users into the DWH and the below query pulls the records from the data warehouse
+------------------------------------------------------------------------------------------
+SELECT 
+	USER_ID 
+	,FIRST_NAME_AND_LAST_NAME 
+	,JOB_TITLE 
+	,EMPLOYEE_ID 
+	,DATE_CREATED
+	,PERMISSION_ACCESS_PROFILE 
+	,PERMISSION_ACCESS_ROLE
+	,STATUS 
+	,TO_CHAR(DATE_LAST_STATUS_CHANGE, 'YYYY-MM-DD') DATE_LAST_STATUS_CHANGE
+	,TO_CHAR(DATE_LAST_PASSWORD_CHANGE, 'YYYY-MM-DD') DATE_LAST_PASSWORD_CHANGE
+	,TO_CHAR(LAST_LOGIN_TIME, 'YYYY-MM-DD') LAST_LOGIN_TIME
+	,DB_NAME	
+	,DATA_FETCH_TIME_IN_TABLE Execution_date
+FROM 
+	ATNI_PROD.GTT_REPORTING.USER_DETAIL
+WHERE 
+	date(DATA_FETCH_TIME_IN_TABLE) = date(current_date - 1)

@@ -1,0 +1,304 @@
+
+
+first_name
+last_name
+contact_number
+account_number
+email_address
+confirm_email_address
+how_many_pods_do_you_currently_have_installed
+recommended_pods_hidden
+ordered_pods_hidden
+effective_date
+account_holder
+submission_date
+
+
+select
+*
+
+from(
+SELECT
+sid,
+from_unixtime(submitted) as submitted,
+form_key,
+data,
+title
+FROM(
+SELECT
+a.sid,
+a.nid,
+a.cid,
+c.form_key,
+c.name,
+d.title,
+a.data,
+b.submitted,
+b.modified,
+b.completed
+FROM
+webform_submitted_data a
+left join
+webform_submissions b on a.sid=b.sid
+left join
+webform_component c on a.nid=c.nid and a.cid=c.cid
+left join
+node d on a.nid=d.nid
+) AS Q
+WHERE
+#title in('Landline Telephone and Broadband Application', 'Enhanced DSL Application Form','DSL free modem campaign')
+#title in('Blaze Online Application', 'Plume Wi-Fi Pilot Install Checklist','Blaze Installation Check List ','Blaze Installation Checklist (New)','Modify Internet Service (New)')
+title in('Modify Internet Service (New)')
+and submitted>=1609459200
+/*where form_key in (select form_key from webform_component where  upper(name) like '%POD%' order by name) AND 
+ DATA not in ('NA','NONE','0') AND 
+ LENGTH (data) > 5*/
+
+) as q
+order by sid
+
+/*
+ * Blaze Online Application
+ * Plume Wi-Fi Pilot Install Checklist
+ * Blaze Installation Check List 
+ * Blaze Installation Checklist (New)
+ * Modify Internet Service (New)
+ */
+
+select * from webform_component where  upper(name) like '%POD%' order by name -- like '%result%' #where upper(data) like '%POD%';
+
+--------------------------------------------------------------------------------------
+select 
+	sid,
+	max(if (form_key = 'first_name', data, NULL)) as first_name,
+	max(if (form_key = 'last_name', data, NULL)) as last_name,
+	max(if (form_key = 'contact_number', data, NULL)) as contact_number,
+	max(if (form_key = 'account_number', data, NULL)) as account_number,
+	max(if (form_key = 'email_address', data, NULL)) as email_address,
+	max(if (form_key = 'confirm_email_address', data, NULL)) as confirm_email_address,
+	max(if (form_key = 'how_many_pods_do_you_currently_have_installed', data, NULL)) as how_many_pods_do_you_currently_have_installed,
+	max(if (form_key = 'recommended_pods_hidden', data, NULL)) as recommended_pods_hidden,
+	max(if (form_key = 'ordered_pods_hidden', data, NULL)) as ordered_pods_hidden,
+	max(if (form_key = 'effective_date', data, NULL)) as effective_date,
+	max(if (form_key = 'account_holder', data, NULL)) as account_holder,
+	max(if (form_key = 'submission_date', data, NULL)) as submission_date
+
+from 
+	(
+		select
+		*
+		
+		from(
+		SELECT
+		sid,
+		from_unixtime(submitted) as submitted,
+		form_key,
+		data,
+		title
+		FROM(
+		SELECT
+		a.sid,
+		a.nid,
+		a.cid,
+		c.form_key,
+		c.name,
+		d.title,
+		a.data,
+		b.submitted,
+		b.modified,
+		b.completed
+		FROM
+		webform_submitted_data a
+		left join
+		webform_submissions b on a.sid=b.sid
+		left join
+		webform_component c on a.nid=c.nid and a.cid=c.cid
+		left join
+		node d on a.nid=d.nid
+		) AS Q
+		WHERE
+		#title in('Landline Telephone and Broadband Application', 'Enhanced DSL Application Form','DSL free modem campaign')
+		#title in('Blaze Online Application', 'Plume Wi-Fi Pilot Install Checklist','Blaze Installation Check List ','Blaze Installation Checklist (New)','Modify Internet Service (New)')
+		title in('Modify Internet Service (New)')
+		#and submitted>=1609459200
+		/*where form_key in (select form_key from webform_component where  upper(name) like '%POD%' order by name) AND 
+		 DATA not in ('NA','NONE','0') AND 
+		 LENGTH (data) > 5*/
+		
+		) as q
+		order by sid
+	) sub1
+	group by sid
+	order by sid
+	
+	
+	
+	create table TMP_GTT_WEB_BLAZE_POD_DATA(
+	sid number(38,0),
+	first_name varchar2(26),
+	last_name varchar2(26),
+	 contact_number varchar2(26),
+	 account_number varchar2(26),
+	 email_address varchar2(130),
+	 confirm_email_address varchar2(130),
+	 how_many_pods_installed  number(38,0),
+	 recommended_pods_hidden  number(38,0),
+	 ordered_pods_hidden  number(38,0),
+	effective_date date,
+	 account_holder varchar2(40),
+	 submission_date varchar2(30)
+	
+	
+	
+	);
+	
+	
+	-------------------------------------------------------------------------------------
+	select
+A.ACCOUNT_NO,
+A.EXTERNAL_ID,
+A.EXTERNAL_ID_TYPE,
+B.DISPLAY_VALUE as Ext_ID_DESCRIPTIUON,
+--D.display_value offer_description,
+A.SUBSCR_NO,
+A.ACTIVE_DATE,
+e.*
+
+from
+external_id_equip_map@read_main1 a
+left join external_id_type_values b on a.EXTERNAL_ID_TYPE = b.EXTERNAL_ID_TYPE
+left join offer_inst@read_main1 c on a.account_no = c.account_no
+right join TMP_GTT_WEB_BLAZE_POD_DATA e on a.external_id = concat('592',e.account_number)
+--left join offer_inst@read_main1 c on a.subscr_no = c.subscr_no
+--left join offer_values d on c.offer_id=d.offer_id 
+where --external_id ='5925013764' --
+--a.account_no in (197923)
+--and view_status=2
+b.service_version_id = (Select max(service_version_id) from external_id_type_values)
+--and d.reseller_version_id = (Select max(reseller_version_id) from offer_values)
+and a.inactive_date is null
+and upper(first_name) not like '%TEST%';
+
+
+select b.display_value, a.* from offer_inst@read_main1 a
+left join offer_values b
+on a.offer_id=b.offer_id 
+where 
+a.subscr_no in (3420008)
+ and b.reseller_version_id = (Select max(reseller_version_id) from offer_values);
+
+
+select * from external_id_type_values;
+
+-----------------------------------------------------------------------
+	drop table TMP_GTT_WEB_BLAZE_POD_DATA;
+    
+    create table TMP_GTT_WEB_BLAZE_POD_DATA(
+	sid number(38,0),
+	first_name varchar2(26),
+	last_name varchar2(26),
+	 contact_number varchar2(26),
+	 account_number varchar2(26),
+	 email_address varchar2(130),
+	 confirm_email_address varchar2(130),
+	 how_many_pods_installed  number(38,0),
+	 recommended_pods_hidden  number(38,0),
+	 ordered_pods_hidden  number(38,0),
+	effective_date date,
+	 account_holder varchar2(40),
+	 submission_date varchar2(30)
+
+	);
+
+select * from TMP_GTT_WEB_BLAZE_POD_DATA;
+
+
+select * from 
+ external_id_equip_map@read_main1
+ 
+ where subscr_no
+ 
+ in(
+select 
+
+a.subscr_no 
+
+from offer_inst@read_main1 a
+
+where a.subscr_no in 
+    (
+    select 
+        --a.* 
+        distinct a.subscr_no
+    from 
+        external_id_equip_map@read_main1 a 
+    where 
+        external_id in (select  concat('592',e.account_number) from TMP_GTT_WEB_BLAZE_POD_DATA e where  upper(first_name) not like '%TEST%')
+    
+    )
+)    
+    
+    
+select * from
+cbs_owner.external_id_equip_map@read_main1
+where --external_id ='5925013764' --
+subscr_no in (3420008)
+--and view_status=2
+and inactive_date is null;
+
+
+------------------------------------------------
+
+create table tmp_web_blaze_offer as
+select b.display_value, a.* from offer_inst@read_main1 a
+left join offer_values b
+on a.offer_id=b.offer_id 
+where 
+b.reseller_version_id = (Select max(reseller_version_id) from offer_values)
+and a.subscr_no in 
+
+  (
+      select 
+        --a.* 
+        distinct a.subscr_no
+    from 
+        external_id_equip_map@read_main1 a 
+    where 
+        external_id in (select  concat('592',e.account_number) from TMP_GTT_WEB_BLAZE_POD_DATA e where  upper(first_name) not like '%TEST%')
+  )
+  and b.offer_id in (
+  11342,
+  11340,
+  11338,
+  11332,
+  11330,
+  11331
+  );
+
+  	select distinct
+    
+A.ACCOUNT_NO,
+A.EXTERNAL_ID,
+A.EXTERNAL_ID_TYPE,
+B.DISPLAY_VALUE as Ext_ID_DESCRIPTIUON,
+d.display_value,
+A.SUBSCR_NO,
+A.ACTIVE_DATE,
+e.*
+
+from
+external_id_equip_map@read_main1 a
+join tmp_web_blaze_offer d on a.subscr_no =  d.Subscr_no
+left join external_id_type_values b on a.EXTERNAL_ID_TYPE = b.EXTERNAL_ID_TYPE
+left join offer_inst@read_main1 c on a.account_no = c.account_no
+left join TMP_GTT_WEB_BLAZE_POD_DATA e on a.external_id = concat('592',e.account_number)
+--left join offer_inst@read_main1 c on a.subscr_no = c.subscr_no
+--left join offer_values d on c.offer_id=d.offer_id 
+where --external_id ='5925013764' --
+--a.account_no in (197923)
+--and view_status=2
+b.service_version_id = (Select max(service_version_id) from external_id_type_values)
+--and d.reseller_version_id = (Select max(reseller_version_id) from offer_values)
+and a.inactive_date is null
+--and upper(first_name) not like '%TEST%';
+order by e.sid

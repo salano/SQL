@@ -1,0 +1,33 @@
+select
+JD.ID_TYPE,
+JD.ID_VALUE,
+JD.USE_CODE,
+JD.ACCOUNT_NO,
+JD.TRACKING_ID,
+JD.JNL_REF_NO,
+(JD.INVOICE_AMOUNT/100) JNL_INV_AMT,
+(JD.REPORTED_AMOUNT/100) JNL_REPORT_AMT,
+JD.PAYMENT_MODE,
+JD.JNL_CODE_ID,
+JC.FML_ACCT_CR,
+JC.FML_ACCT_DB,
+JC.DISPLAY_VALUE JNL_DESC,
+JD.JNL_END_DT,
+JD.JNL_SUBCYCLE_END_DT
+from
+CBS_OWNER.JNL_DETAIL JD, CBS_OWNER.JNL_RUNS_STATUS JRS, CBS_OWNER.JNL_CUSTOM JC, CBS_OWNER.JNL_KEYS JK
+WHERE
+trunc(JRS.JNL_SUBCYCLE_END_DT)  > to_date('31122019', 'DDMMYYYY')
+--BETWEEN to_date('01012020', 'DDMMYYYY') and to_date('31032020', 'DDMMYYYY')
+AND JRS.RUN_STATUS = 1
+AND JRS.JNL_REF_NO = JD.JNL_REF_NO
+AND jnl_feed_status = 'W'
+AND JK.Jnl_Code_Id=JC.JNL_CODE_ID
+AND JD.Jnl_Code_Id=JC.JNL_CODE_ID
+AND JK.Id_Type=jd.id_type
+AND jk.id_value=jd.id_value
+and jd.account_category=jk.account_category
+and trunc(jd.jnl_end_dt)=trunc(jrs.jnl_end_dt)
+and trunc(jd.jnl_subcycle_end_dt)=trunc(jrs.jnl_subcycle_end_dt)
+AND JK.Inactive_Date is null
+AND (JC.fml_acct_db = '30600.1221' or JC.fml_acct_cr = '30600.1221');

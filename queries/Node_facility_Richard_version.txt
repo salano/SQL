@@ -1,0 +1,27 @@
+select /*+ PARALLEL(4) */  a.proci_ref "Service_Order_id",d.order_number,c.subscr_no,c.create_Dt,
+(select display_external_id from cbs_owner.subscriber_key@read_cust1 where subscr_no=c.subscr_no) Contact_no,b.name,
+(select TO_CHAR (wp_user_data.var_cvalue) from cbs_owner.wp_user_data where proci_id=a.proci_id and var_name like 'InstComments%' and data_type=2) Comments ,
+(select TO_CHAR (wp_user_data.var_cvalue) from cbs_owner.wp_user_data where proci_id=a.proci_id and var_name like 'Address1%' and data_type=2) Address1,
+(select TO_CHAR (wp_user_data.var_cvalue) from cbs_owner.wp_user_data where proci_id=a.proci_id and var_name like 'Address2%' and data_type=2) Address2,
+a.proci_id,proc_ref, b.lu_date, b.lu_id,
+case  
+when  e.bill_fname || ' ' || e.bill_lname = ' ' 
+then 
+e.bill_company else e.bill_fname || ' ' || e.bill_lname 
+end customer_name, e.cust_email,e.statement_to_email
+from cbs_owner.wp_proci a, 
+cbs_owner.wp_proci_node b, 
+cbs_owner.ord_service_order@read_cust1 c, 
+cbs_owner.ord_order@read_cust1 d, 
+cbs_owner.cmf@read_cust1 e
+where a.proci_ref=to_char(c.service_order_id)
+and c.order_status_id < 80 and d.order_Status_id < 80
+--and c.is_service_level=1 
+and c.wp_process_id ='GTTFacility' 
+and c.create_dt > to_date ('8/13/2013 12:00:00 AM','mm/dd/yyyy hh:mi:ss AM') ---if 2019 is the date then hardcode
+and a.proci_id=b.proci_id
+and c.order_id=d.order_id
+and e.account_no=c.account_no
+and b.name='Facility Not Available' -- by node
+and b.node_state_id=2
+and b.node_type_id=2;

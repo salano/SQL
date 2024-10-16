@@ -1,0 +1,12 @@
+ select
+ d.*,
+ g.PHONE_NUMBER as DSL_NUMBER,
+ g.SERVICE_NAME.
+ g.STATUS as active
+ 
+ 
+ from 
+        
+ATNI_DEV.GTT_REPORTING.blaze_ACCOUNTS_2022_1 d
+LEFT JOIN ATNI_PROD.GTT_REPORTING.DSL_DUMPS_DNS_RAW G
+on concat(nvl(upper(d.BILL_FNAME),''), ' ',nvl(upper(d.BILL_LNAME),'') ) = upper(G.FULL_NAME) AND date(G.dump_ts) = date(CURRENT_DATE())

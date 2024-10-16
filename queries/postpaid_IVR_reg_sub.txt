@@ -1,0 +1,37 @@
+select distinct  
+  c.ACCOUNT_NO,
+  eip.SUBSCR_NO,
+  CASE
+     WHEN eip.EXTERNAL_ID_TYPE = 9 THEN 'Landline'
+       WHEN eip.EXTERNAL_ID_TYPE = 11 THEN 'DSL'
+         WHEN eip.EXTERNAL_ID_TYPE = 1 THEN 'Mobile'
+         WHEN eip.EXTERNAL_ID_TYPE = 27 THEN 'Leased Line'
+       WHEN eip.EXTERNAL_ID_TYPE in (37,39) THEN 'Blaze'
+       ELSE 'Unknown'
+  END SERVICE,
+  acv.DISPLAY_VALUE cust_type,
+  BILL_FNAME,
+  BILL_LNAME,
+
+  CUST_EMAIL Email,
+  CUST_PHONE1,
+  CUST_PHONE2,
+  CONTACT1_PHONE,
+  CONTACT2_PHONE,
+  'Yes' AS codeWORD
+ 
+from 
+  ATNI_PROD.GTT_REPORTING.CMF C
+  LEFT JOIN
+  	ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO and date(eip.EXTRACT_FILE_DATE) = date(current_date)
+  LEFT JOIN 
+  	 ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES acv on c.account_category = acv.account_category and acv.SERVICE_VERSION_ID = (select max(SERVICE_VERSION_ID) from ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES)
+  LEFT JOIN
+  	ATNI_PROD.GTT_REPORTING.ACCOUNT_SUBSCRIBER_EXTRACT ase on c.ACCOUNT_NO = ase.ACCOUNT_NO and date(ase.EXTRACT_FILE_DATE) = date(current_date)
+  		
+WHERE 
+  CODEWORD IS NOT NULL AND 
+  (ase.payment_mode1 !=1 or ase.payment_mode1 is null) AND 
+   LENGTH(EIP.EXTERNAL_ID) = 10
+  
+  ;

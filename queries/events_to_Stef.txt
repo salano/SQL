@@ -1,0 +1,72 @@
+SELECT r.account_no, 
+       r.event, 
+       CASE 
+         WHEN r.scenario_id BETWEEN 100 AND 199 THEN 'Mobile' 
+         WHEN r.scenario_id BETWEEN 200 AND 299 THEN 'Wireline' 
+         WHEN r.scenario_id BETWEEN 300 AND 399 THEN 'DSL' 
+         WHEN r.scenario_id BETWEEN 400 AND 499 THEN 'GPON' 
+         WHEN r.scenario_id BETWEEN 500 AND 599 THEN 'Enterprise Data'
+         WHEN r.scenario_id BETWEEN 611 AND 634 THEN 'Cross service'
+         WHEN r.scenario_id = 601 THEN 'VIP' 
+         WHEN r.scenario_id = 901 THEN 'Mobile' 
+         WHEN r.scenario_id = 902 THEN 'Wireline' 
+         WHEN r.scenario_id = 903 THEN 'DSL' 
+         WHEN r.scenario_id = 904 THEN 'GPON' 
+         ELSE 'Legacy scenario' 
+       END                   AS service_type, 
+       Trunc(col_enter_date) AS event_processed_date, 
+       a.current_balance, 
+       a.balance_30_day, 
+       a.balance_60_day, 
+       a.balance_90_day, 
+       a.balance_120_day, 
+       a.total, 
+       CASE 
+         WHEN event = 'Cease Deposit and Apply as Payment' THEN 
+         SUM(Nvl(dep.deposit_amount, 0) / 100) 
+         ELSE 0 
+       END                   AS returned_deposit_amount, 
+       CASE 
+         WHEN event = 'Cease Deposit and Apply as Payment' THEN 
+         SUM(Nvl(dep.interest_amount, 0) / 100) 
+         ELSE 0 
+       END                   AS returned_deposit_interest, 
+       CASE 
+         WHEN event = 'Write Off Balance' THEN SUM(Nvl(w.amount, 0) / 100) 
+         ELSE 0 
+       END                   AS written_off_amount 
+FROM   report_col r, 
+       aged_balances a, 
+       deposit dep, 
+       jnl_writeoff w
+WHERE  r.account_no = dep.account_no (+) 
+       AND Trunc(dep.date_returned (+)) = Trunc(r.col_enter_date) 
+       AND r.account_no = w.account_no (+) 
+       AND w.writeoff_type_code (+) = 2 
+       AND Trunc(w.writeoff_trans_date (+)) = Trunc(r.col_enter_date) 
+       AND r.scenario_id between 100 and 904
+       AND trunc(r.col_enter_date) = trunc(current_date)  -1 
+GROUP  BY r.account_no, 
+          r.event, 
+          Trunc(col_enter_date), 
+          a.current_balance, 
+          a.balance_30_day, 
+          a.balance_60_day, 
+          a.balance_90_day, 
+          a.balance_120_day, 
+          a.total, 
+          CASE 
+         WHEN r.scenario_id BETWEEN 100 AND 199 THEN 'Mobile' 
+         WHEN r.scenario_id BETWEEN 200 AND 299 THEN 'Wireline' 
+         WHEN r.scenario_id BETWEEN 300 AND 399 THEN 'DSL' 
+         WHEN r.scenario_id BETWEEN 400 AND 499 THEN 'GPON' 
+         WHEN r.scenario_id BETWEEN 500 AND 599 THEN 'Enterprise Data'
+         WHEN r.scenario_id BETWEEN 611 AND 634 THEN 'Cross service'
+         WHEN r.scenario_id = 601 THEN 'VIP' 
+         WHEN r.scenario_id = 901 THEN 'Mobile' 
+         WHEN r.scenario_id = 902 THEN 'Wireline' 
+         WHEN r.scenario_id = 903 THEN 'DSL' 
+         WHEN r.scenario_id = 904 THEN 'GPON' 
+         ELSE 'Legacy scenario' 
+          END
+ORDER BY 1;

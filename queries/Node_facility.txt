@@ -1,0 +1,38 @@
+select 
+ oa.PROCI_ID JOBID,
+ to_char(oa.CREATE_DT,'yyyy-mm-dd') as create_date,
+ oso.create_who,
+ oa.SERVICE_ORDER_ID,
+ oa.ORDER_ID,
+ c.ACCOUNT_NO,
+ oa.PRIMARY_OFFER_ID,
+ oa.NODE_NAME,
+ to_char(oa.NODE_LU_DATE,'yyyy-mm-dd') as NODE_LU_DATE,
+ trim(c.BILL_FNAME || ' '||c.BILL_LNAME ||' '|| c.BILL_COMPANY) CUST_Name,
+ trim(c.BILL_ADDRESS1|| ' '||c.BILL_ADDRESS2|| ' '|| c.BILL_ADDRESS3 || ' ' || c.BILL_ADDRESS4 || ' ' || c.BILL_CITY || ' '|| c.BILL_STATE) AS ADDRESS,
+ acv.DISPLAY_VALUE cust_type,
+
+  case
+   when contact1_phone is not null and contact2_phone is null then contact1_phone
+   when contact1_phone is null and contact2_phone is not null then contact2_phone
+    when contact1_phone is not null and contact2_phone is not null then contact1_phone
+   when contact1_phone is null and contact2_phone is null then contact1_phone
+  end as contact_no,
+
+  case
+   when cust_email is not null and statement_to_email is null then cust_email
+   when cust_email is null and statement_to_email is not null then statement_to_email
+    when cust_email is not null and statement_to_email is not null then cust_email
+   when cust_email is null and statement_to_email is null then cust_email
+  end as email_addr
+
+ 
+from 
+ CMF c join
+  temp_order_analysis oa on c.ACCOUNT_NO = oa.ACCOUNT_NO join
+  ACCOUNT_CATEGORY_VALUES acv on c.account_category = acv.account_category and acv.SERVICE_VERSION_ID = (select max(SERVICE_VERSION_ID) from ACCOUNT_CATEGORY_VALUES)
+  join
+  ord_service_order oso on oa.service_order_id=oso.service_order_id
+where 
+  oa.node_name ='Facility Not Available'
+  and trunc(oa.create_dt)>=to_date('2019-11-01','yyyy-mm-dd')

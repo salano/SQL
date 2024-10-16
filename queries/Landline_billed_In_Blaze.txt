@@ -1,0 +1,98 @@
+SELECT DISTINCT *
+
+FROM 
+(
+	SELECT ACCOUNT_NO ,
+					EXTERNAL_ID ,
+					SUBSCR_NO,
+					BILL_FNAME ,
+					BILL_LNAME ,
+					BILL_COMPANY ,
+					BILL_ADDRESS1 ,
+					BILL_ADDRESS2 ,
+					BILL_ADDRESS3 ,
+					BILL_ADDRESS4 ,
+					BILL_CITY ,
+					CONTACT1_PHONE,
+					CONTACT2_PHONE, 
+					CUST_EMAIL,
+					EXCHANGE,
+	
+	round(avg(billed_amount) OVER (PARTITION BY SUBSCR_NO),2) AS average_bill
+	
+	FROM 
+	
+	(
+	
+		SELECT to_char(DD.TRANS_DT,'YYYY-MM') AS TRANS_MONTH, FX.*, round(sum(DD.AMOUNT)/100,2) AS billed_amount
+		
+		FROM 
+		(
+			SELECT 
+			    distinct
+				sub.*,
+				EN.EXCHANGE
+			FROM 
+				(
+				SELECT
+				    distinct
+					eip.ACCOUNT_NO ,
+					eip.EXTERNAL_ID ,
+					eip.SUBSCR_NO,
+					C.BILL_FNAME ,
+					C.BILL_LNAME ,
+					C.BILL_COMPANY ,
+					C.BILL_ADDRESS1 ,
+					C.BILL_ADDRESS2 ,
+					C.BILL_ADDRESS3 ,
+					C.BILL_ADDRESS4 ,
+					C.BILL_CITY ,
+					C.CONTACT1_PHONE,
+					C.CONTACT2_PHONE, 
+					C.CUST_EMAIL
+					
+				FROM
+					GTT_REPORTING.CMF_EXTRACT C 
+					JOIN ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on C.ACCOUNT_NO = eip.ACCOUNT_NO AND date(eip.EXTRACT_FILE_DATE) = date(CURRENT_DATE())
+					AND EIP.IS_CURRENT = 1
+				WHERE
+					Eip.EXTERNAL_ID_TYPE=9
+					AND DATE_INACTIVE IS NULL
+					AND C.DATE_INACTIVE IS NULL 
+			) SUB
+			LEFT JOIN ATNI_DEV.GTT_REPORTING.EXCHANGE_NAMES EN
+				ON try_to_numeric(SUBSTRING(SUB.EXTERNAL_ID, 4, 3)) = EN.prefix AND try_to_numeric(SUBSTRING(SUB.EXTERNAL_ID, 7, 1)) >= EN.LOWER_RANGE AND try_to_numeric(SUBSTRING(SUB.EXTERNAL_ID, 7, 1)) <= EN.UPPER_RANGE
+			WHERE (EN.EXCHANGE IN (
+				
+							SELECT 
+								EXCHANGE -- GPON EXCHANGES
+							FROM 
+								ATNI_PROD.GTT_REPORTING.DSL_DUMPS_DNS_RAW 
+							WHERE 
+								date(dump_ts) = date(CURRENT_DATE())
+							    AND CONCAT('592',PHONE_NUMBER) IN 
+							    (SELECT 
+									PHONE 
+								FROM 
+									ATNI_PROD.GTT_REPORTING.tmp_DSL_blaze_area
+								WHERE 
+									"GPON AREA" ='Y'
+									--AND (upper(OFFER_DESCRIPT) LIKE '%CONSUMER%' OR upper(OFFER_DESCRIPT) LIKE '%EMPLOYEE%')
+								)
+									
+				)
+				
+			OR EN.EXCHANGE in ('Amelia''s Ward','V/Hoop (Poudroyen)','Non Pariel (ECD)','New Amsterdam','Mahaica'))
+		) FX
+		LEFT JOIN GTT_REPORTING.CDR_DATA DD
+			ON FX.ACCOUNT_NO = DD.ACCOUNT_NO  AND FX.SUBSCR_NO = DD.SUBSCR_NO 
+		WHERE 
+			DD.APPLICATION_ID = 1 AND
+			DD.EXTERNAL_ID_TYPE IN (9,27) AND 
+			date(DD.TRANS_DT) between '2021-01-01'::DATE AND '2021-12-31'::DATE
+		GROUP BY 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15, 16
+		
+	)Mbill	
+	
+)FINALQ 
+WHERE average_bill >= 1200

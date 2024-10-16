@@ -1,0 +1,14 @@
+Hi,
+
+Can you please answer these questions so we can prioritize this work and provide you the estimated completion date?
+
+
+1.           What is the priority (Low, Moderate, High, Critical)
+2.           If the priority is Critical or High, please provide a reason for that?
+3.           When do you expect this to be completed?
+4.           What is the Business value for this request? 
+5.           Is there any revenue impact? If yes, what is the value.
+
+
+Thank you,
+Vasudha.

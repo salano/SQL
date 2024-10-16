@@ -1,0 +1,85 @@
+select distinct  
+  c.ACCOUNT_NO,
+  eip.EXTERNAL_ID,
+  BILL_FNAME,
+  BILL_LNAME,
+  BILL_COMPANY,
+  BILL_ADDRESS1,
+  BILL_ADDRESS2,
+  BILL_ADDRESS3,
+  BILL_ADDRESS4,
+  BILL_CITY,
+  BILL_STATE,
+  BILL_ZIP,
+  BILL_COUNTY,
+  CUST_EMAIL Email,
+  CUST_PHONE1 ||' '  ||CUST_PHONE2 CustPhone,
+  CONTACT1_PHONE||' ' ||CONTACT2_PHONE ContactPhone,
+  eiv.DISPLAY_VALUE,
+  acv.DISPLAY_VALUE cust_type, 
+  CASE
+     WHEN eip.EXTERNAL_ID_TYPE = 9 THEN 'Landline'
+       WHEN eip.EXTERNAL_ID_TYPE = 11 THEN 'DSL'
+         WHEN eip.EXTERNAL_ID_TYPE = 1 THEN 'Mobile'
+         WHEN eip.EXTERNAL_ID_TYPE = 27 THEN 'Leased Line'
+       WHEN eip.EXTERNAL_ID_TYPE in (37,39) THEN 'Blaze'
+       ELSE 'Unknown'
+  END SERVICE,
+  c.DATE_INACTIVE
+from 
+  ATNI_PROD.GTT_REPORTING.CMF_EXTRACT c join
+  ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO and date(c.EXTRACT_FILE_DATE) = date(current_date -1)
+  join
+  ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_TYPE_VALUES eiv on eip.EXTERNAL_ID_TYPE = eiv.EXTERNAL_ID_TYPE and eiv.service_version_id = (select max(service_version_id) from ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_TYPE_VALUES) join
+  ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES acv on c.account_category = acv.account_category and acv.SERVICE_VERSION_ID = (select max(SERVICE_VERSION_ID) from ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES) left join
+  ATNI_PROD.GTT_REPORTING.OFFER_INST A ON A.SUBSCR_NO = eip.SUBSCR_NO
+where
+  eip.IS_CURRENT = 1 and 
+  date(eip.EXTRACT_FILE_DATE) = date(current_date -1) and
+  eip.EXTERNAL_ID_TYPE in (9) and
+  A.OFFER_TYPE =2 and 
+  A.OFFER_ID NOT IN('2360','10458') and
+  A.INACTIVE_DT is null and 
+  eip.EXTERNAL_ID like '592%' and
+  --(c.EXTRACT_FILE_DATE) ='20180930' and
+
+   c.DATE_INACTIVE is  null
+
+  union
+  
+  select distinct  
+  c.ACCOUNT_NO,
+  EE.EXTERNAL_ID,
+    BILL_FNAME,
+  BILL_LNAME,
+  BILL_COMPANY,
+  BILL_ADDRESS1,
+  BILL_ADDRESS2,
+  BILL_ADDRESS3,
+  BILL_ADDRESS4,
+  BILL_CITY,
+  BILL_STATE,
+  BILL_ZIP,
+  BILL_COUNTY,
+  CUST_EMAIL Email,
+  CUST_PHONE1 ||' '  ||CUST_PHONE2 CustPhone,
+  CONTACT1_PHONE||' ' ||CONTACT2_PHONE ContactPhone,
+  'WIMAX' AS DISPLAY_VALUE,
+  acv.DISPLAY_VALUE cust_type,
+  'UNKNOWN' SERVICE,
+  c.DATE_INACTIVE
+FROM
+  ATNI_PROD.GTT_REPORTING.CMF_EXTRACT c join
+  ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT EE on c.ACCOUNT_NO = ee.ACCOUNT_NO and date(c.EXTRACT_FILE_DATE) = date(current_date -1)
+  join ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES acv on c.account_category = acv.account_category and acv.SERVICE_VERSION_ID = (select max(SERVICE_VERSION_ID) from ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES) left join  
+  ATNI_PROD.GTT_REPORTING.OFFER_INST A ON A.SUBSCR_NO = EE.SUBSCR_NO
+              WHERE DATE(EE.EXTRACT_FILE_DATE) = date(current_date -1)
+              AND EE.EXTERNAL_ID_TYPE IN (9)
+              AND SUBSTRING(EE.EXTERNAL_ID,1,6) IN ('592771','592774')
+              AND (c.EXTRACT_FILE_DATE) =to_char(current_date -1, 'yyyyMMdd') and
+                      A.OFFER_TYPE =2 and  
+                      A.OFFER_ID NOT IN('2360','10458') and
+                      A.INACTIVE_DT is null and 
+                      ee.EXTERNAL_ID like '592%' and
+       
+            c.DATE_INACTIVE is  null

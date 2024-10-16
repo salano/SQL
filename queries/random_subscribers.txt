@@ -1,0 +1,287 @@
+with randomly_sorted_subscribers as (
+SELECT 
+	sub2.*,
+	row_number() over(partition by SERVICE order by random()) as random_sort
+FROM 
+(
+--------------------------
+SELECT 
+
+	*
+FROM 
+	(
+		SELECT
+		    DISTINCT 
+		          A.BID AS External_ID,
+		          A.ACCOUNTNUMBER,         
+		          C.SUBSCR_NO,
+		          acv.DISPLAY_VALUE cust_type,
+		          A.RATEPLANCODE AS PRIMARY_OFFER,
+		          O.DISPLAY_VALUE AS OFFER_NAME,
+		          CASE WHEN A.SYSTEMID = 8 THEN 'Wireline'
+		            WHEN A.SYSTEMID = 12 AND  B.LEAFLEVELNAME ='DSL'  THEN 'DSL'
+		             WHEN A.SYSTEMID = 4 AND B.LEAFLEVELNAME ='Fixed Wireless' THEN 'Fixed LTE'
+		            WHEN A.SYSTEMID = 15 THEN 'Leased Line'
+		            WHEN A.SYSTEMID = 17 THEN 'Calling Card'
+		            WHEN A.SYSTEMID = 18 THEN 'WiMax'
+		            WHEN A.SYSTEMID = 22 THEN 'Interconnect'
+		            WHEN A.SYSTEMID = 24 THEN 'GPON'
+		           END SERVICE,
+		          A.FIRSTNAME,
+		          A.LASTNAME,
+		          A.SERVICEADDRESS1,
+		          A.SERVICEADDRESS2,
+		          A.SERVICEADDRESS3,
+		          A.SERVICEADDRESS4,
+		          A.CITY,
+		          D.CONTACT1_PHONE,
+		          D.CONTACT2_PHONE,
+		          D.CUST_EMAIL/*,
+		          B.PRODUCTNAME AS BILL_PRODUCT,
+		          B.LEAFLEVELNAME*/
+		
+		       
+		FROM          
+		          
+		    SC_INPUT.ODSSUBSCRIBERSNAPSHOT A
+		    INNER JOIN SC_OUTPUT.DIMPRODUCT B ON
+		                                            A.RATEPLANCODE::STRING = B.PRODUCTCODE
+		                                            --AND B.LEAFLEVELNAME ='Mobile Prepaid Combo'
+		                                            AND B.SOURCESYSTEMID = 1
+		                                            AND B.REVENUECOUNTABLE = 1
+		    INNER JOIN GTT_REPORTING.GTT_SAA_SUBSCRIBER_FEED_DETAIL  C ON  ---GET SUBSCR_NO
+		                                                               A.ACCOUNTNUMBER=C.ACCOUNTNUMBER AND A.BID=C.BID 
+		                                                               AND C.DATESTART = current_Date()-1
+		    LEFT JOIN GTT_REPORTING.CMF_EXTRACT D ON A.ACCOUNTNUMBER = D.ACCOUNT_NO AND date(D.EXTRACT_FILE_DATE) = current_Date()-1
+		    --LEFT JOIN GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT E ON A.ACCOUNTNUMBER = E.ACCOUNT_NO AND date(E.EXTRACT_FILE_DATE) = current_Date()-1 AND e.IS_CURRENT = 1
+		    LEFT JOIN 
+		    	ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES acv on d.account_category = acv.account_category and acv.SERVICE_VERSION_ID = (select max(SERVICE_VERSION_ID) from ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES)
+		    LEFT JOIN ATNI_PROD.GTT_REPORTING.OFFER_VALUES O ON A.RATEPLANCODE=O.OFFER_ID AND O.RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM ATNI_PROD.GTT_REPORTING.OFFER_VALUES)
+		    WHERE
+		    A.SOURCESYSTEMID = 1
+		    AND A.DATESTART = current_Date()-1
+		    AND A.SYSTEMID IN (24, 12,8,4)
+		    --AND date(D.created_date) = current_Date()
+		    AND A.STATUSCODE NOT IN('D','P')
+		    AND A.CUSTOMERTYPE NOT IN(12, 8)
+		    AND acv.DISPLAY_VALUE LIKE '%Residential%'
+		    AND D.DATE_INACTIVE IS null
+		   ) sub 
+		    
+WHERE SERVICE IS NOT NULL
+AND (upper(FIRSTNAME) NOT LIKE '%LIMITED%'
+	AND upper(FIRSTNAME) NOT LIKE '%LTD%'
+	AND upper(FIRSTNAME) NOT LIKE '%INCANDPANDATED%'
+	AND upper(FIRSTNAME) NOT LIKE '%CANDPANDATION%'
+	AND upper(FIRSTNAME) NOT LIKE '%GUYANA%'
+	AND upper(FIRSTNAME) NOT LIKE '%INDUSTRY%'
+	AND upper(FIRSTNAME) NOT LIKE '%ENTERPRISE%'
+	AND upper(FIRSTNAME) NOT LIKE '%COMMISSION%'
+	AND upper(FIRSTNAME) NOT LIKE '%EMBASSY%'
+	AND upper(FIRSTNAME) NOT LIKE '%EXPRESS%'
+	AND upper(FIRSTNAME) NOT LIKE '%AGENCY%'
+	AND upper(FIRSTNAME) NOT LIKE '%SYSTEM%'
+	AND upper(FIRSTNAME) NOT LIKE '%CONSTRUCTION%'
+	AND upper(FIRSTNAME) NOT LIKE '%UNION%'
+	AND upper(FIRSTNAME) NOT LIKE '%INSURANCE%'
+	AND upper(FIRSTNAME) NOT LIKE '%PROGRAM%'
+	AND upper(FIRSTNAME) NOT LIKE '%SALES%'
+	AND upper(FIRSTNAME) NOT LIKE '%LOGISTIC%'
+	AND upper(FIRSTNAME) NOT LIKE '%SHOP%'
+	
+	AND upper(LASTNAME) NOT LIKE '%LIMITED%'
+	AND upper(LASTNAME) NOT LIKE '%LTD%'
+	AND upper(LASTNAME) NOT LIKE '%INCANDPANDATED%'
+	AND upper(LASTNAME) NOT LIKE '%CANDPANDATION%'
+	AND upper(LASTNAME) NOT LIKE '%GUYANA%'
+	AND upper(LASTNAME) NOT LIKE '%INDUSTRY%'
+	AND upper(LASTNAME) NOT LIKE '%ENTERPRISE%'
+	AND upper(LASTNAME) NOT LIKE '%COMMISSION%'
+	AND upper(LASTNAME) NOT LIKE '%EMBASSY%'
+	AND upper(LASTNAME) NOT LIKE '%EXPRESS%'
+	AND upper(LASTNAME) NOT LIKE '%AGENCY%'
+	AND upper(LASTNAME) NOT LIKE '%SYSTEM%'
+	AND upper(LASTNAME) NOT LIKE '%CONSTRUCTION%'
+	AND upper(LASTNAME) NOT LIKE '%UNION%'
+	AND upper(LASTNAME) NOT LIKE '%INSURANCE%'
+	AND upper(LASTNAME) NOT LIKE '%PROGRAM%'
+	AND upper(LASTNAME) NOT LIKE '%SALES%'
+	AND upper(LASTNAME) NOT LIKE '%LOGISTIC%'
+	AND upper(LASTNAME) NOT LIKE '%SHOP%')
+	
+	AND LASTNAME IS NOT NULL 
+	AND lower(CUST_EMAIL) NOT LIKE '%gtt.co.gy%'
+	
+-------------------------------
+)sub2
+
+)
+SELECT 
+	External_ID,
+	ACCOUNTNUMBER,
+	SUBSCR_NO,
+	CUST_TYPE,
+	PRIMARY_OFFER,
+	OFFER_NAME,
+	SERVICE,
+	FIRSTNAME,
+	LASTNAME,
+	SERVICEADDRESS1,
+	SERVICEADDRESS2,
+	SERVICEADDRESS3,
+	SERVICEADDRESS4,
+    CITY,
+    CONTACT1_PHONE,
+	CONTACT2_PHONE,
+    CUST_EMAIL
+	
+FROM 
+	randomly_sorted_subscribers
+where
+    random_sort <= 3000;
+	
+-----------------------------------------------------------------------------------------------------------
+
+with randomly_sorted_subscribers as (
+SELECT 
+	sub2.*,
+	row_number() over(partition by SERVICE order by random()) as random_sort
+FROM 
+(
+--------------------------
+SELECT 
+
+	*
+FROM 
+	(
+		SELECT
+		    DISTINCT 
+		          A.BID AS External_ID,
+		          A.ACCOUNTNUMBER,         
+		          C.SUBSCR_NO,
+		          acv.DISPLAY_VALUE cust_type,
+		          A.RATEPLANCODE AS PRIMARY_OFFER,
+		          O.DISPLAY_VALUE AS OFFER_NAME,
+		          CASE WHEN A.SYSTEMID = 8 THEN 'Wireline'
+		            WHEN A.SYSTEMID = 12 AND  B.LEAFLEVELNAME ='DSL'  THEN 'DSL'
+		            --WHEN A.SYSTEMID = 4 AND B.LEAFLEVELNAME ='Fixed Wireless' THEN 'Fixed LTE'
+		            WHEN A.SYSTEMID = 4 AND B.LEAFLEVELNAME ='Mobile Hybrid Combo' THEN 'Hybrid Mobile'
+		            WHEN A.SYSTEMID = 4 AND B.LEAFLEVELNAME ='Mobile Postpaid Combo' THEN 'Postpaid Mobile'
+		            WHEN A.SYSTEMID = 4 AND B.LEAFLEVELNAME ='Mobile Prepaid Combo' THEN 'Prepaid Mobile'
+		            WHEN A.SYSTEMID = 15 THEN 'Leased Line'
+		            WHEN A.SYSTEMID = 17 THEN 'Calling Card'
+		            WHEN A.SYSTEMID = 18 THEN 'WiMax'
+		            WHEN A.SYSTEMID = 22 THEN 'Interconnect'
+		            WHEN A.SYSTEMID = 24 THEN 'GPON'
+		           END SERVICE,
+		          A.FIRSTNAME,
+		          A.LASTNAME,
+		          A.SERVICEADDRESS1,
+		          A.SERVICEADDRESS2,
+		          A.SERVICEADDRESS3,
+		          A.SERVICEADDRESS4,
+		          A.CITY,
+		          D.CONTACT1_PHONE,
+		          D.CONTACT2_PHONE,
+		          D.CUST_EMAIL/*,
+		          B.PRODUCTNAME AS BILL_PRODUCT,
+		          B.LEAFLEVELNAME*/
+		
+		       
+		FROM          
+		          
+		    SC_INPUT.ODSSUBSCRIBERSNAPSHOT A
+		    INNER JOIN SC_OUTPUT.DIMPRODUCT B ON
+		                                            A.RATEPLANCODE::STRING = B.PRODUCTCODE
+		                                            --AND B.LEAFLEVELNAME ='Mobile Prepaid Combo'
+		                                            AND B.SOURCESYSTEMID = 1
+		                                            AND B.REVENUECOUNTABLE = 1
+		    INNER JOIN GTT_REPORTING.GTT_SAA_SUBSCRIBER_FEED_DETAIL  C ON  ---GET SUBSCR_NO
+		                                                               A.ACCOUNTNUMBER=C.ACCOUNTNUMBER AND A.BID=C.BID 
+		                                                               AND C.DATESTART = current_Date()-1
+		    LEFT JOIN GTT_REPORTING.CMF_EXTRACT D ON A.ACCOUNTNUMBER = D.ACCOUNT_NO AND date(D.EXTRACT_FILE_DATE) = current_Date()-1
+		    --LEFT JOIN GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT E ON A.ACCOUNTNUMBER = E.ACCOUNT_NO AND date(E.EXTRACT_FILE_DATE) = current_Date()-1 AND e.IS_CURRENT = 1
+		    LEFT JOIN 
+		    	ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES acv on d.account_category = acv.account_category and acv.SERVICE_VERSION_ID = (select max(SERVICE_VERSION_ID) from ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES)
+		    LEFT JOIN ATNI_PROD.GTT_REPORTING.OFFER_VALUES O ON A.RATEPLANCODE=O.OFFER_ID AND O.RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM ATNI_PROD.GTT_REPORTING.OFFER_VALUES)
+		    WHERE
+		    A.SOURCESYSTEMID = 1
+		    AND A.DATESTART = current_Date()-1
+		    AND A.SYSTEMID IN (4)
+		    --AND date(D.created_date) = current_Date()
+		    AND A.STATUSCODE NOT IN('D','P')
+		    AND A.CUSTOMERTYPE NOT IN(12, 8)
+		    AND acv.DISPLAY_VALUE LIKE '%Residential%'
+		    AND D.DATE_INACTIVE IS null
+		   ) sub 
+		    
+WHERE SERVICE IS NOT NULL
+	AND (upper(FIRSTNAME) NOT LIKE '%LIMITED%'
+	AND upper(FIRSTNAME) NOT LIKE '%LTD%'
+	AND upper(FIRSTNAME) NOT LIKE '%INCANDPANDATED%'
+	AND upper(FIRSTNAME) NOT LIKE '%CANDPANDATION%'
+	AND upper(FIRSTNAME) NOT LIKE '%GUYANA%'
+	AND upper(FIRSTNAME) NOT LIKE '%INDUSTRY%'
+	AND upper(FIRSTNAME) NOT LIKE '%ENTERPRISE%'
+	AND upper(FIRSTNAME) NOT LIKE '%COMMISSION%'
+	AND upper(FIRSTNAME) NOT LIKE '%EMBASSY%'
+	AND upper(FIRSTNAME) NOT LIKE '%EXPRESS%'
+	AND upper(FIRSTNAME) NOT LIKE '%AGENCY%'
+	AND upper(FIRSTNAME) NOT LIKE '%SYSTEM%'
+	AND upper(FIRSTNAME) NOT LIKE '%CONSTRUCTION%'
+	AND upper(FIRSTNAME) NOT LIKE '%UNION%'
+	AND upper(FIRSTNAME) NOT LIKE '%INSURANCE%'
+	AND upper(FIRSTNAME) NOT LIKE '%PROGRAM%'
+	AND upper(FIRSTNAME) NOT LIKE '%SALES%'
+	AND upper(FIRSTNAME) NOT LIKE '%LOGISTIC%'
+	AND upper(FIRSTNAME) NOT LIKE '%SHOP%'
+	
+	AND upper(LASTNAME) NOT LIKE '%LIMITED%'
+	AND upper(LASTNAME) NOT LIKE '%LTD%'
+	AND upper(LASTNAME) NOT LIKE '%INCANDPANDATED%'
+	AND upper(LASTNAME) NOT LIKE '%CANDPANDATION%'
+	AND upper(LASTNAME) NOT LIKE '%GUYANA%'
+	AND upper(LASTNAME) NOT LIKE '%INDUSTRY%'
+	AND upper(LASTNAME) NOT LIKE '%ENTERPRISE%'
+	AND upper(LASTNAME) NOT LIKE '%COMMISSION%'
+	AND upper(LASTNAME) NOT LIKE '%EMBASSY%'
+	AND upper(LASTNAME) NOT LIKE '%EXPRESS%'
+	AND upper(LASTNAME) NOT LIKE '%AGENCY%'
+	AND upper(LASTNAME) NOT LIKE '%SYSTEM%'
+	AND upper(LASTNAME) NOT LIKE '%CONSTRUCTION%'
+	AND upper(LASTNAME) NOT LIKE '%UNION%'
+	AND upper(LASTNAME) NOT LIKE '%INSURANCE%'
+	AND upper(LASTNAME) NOT LIKE '%PROGRAM%'
+	AND upper(LASTNAME) NOT LIKE '%SALES%'
+	AND upper(LASTNAME) NOT LIKE '%LOGISTIC%'
+	AND upper(LASTNAME) NOT LIKE '%SHOP%')
+	
+	AND LASTNAME IS NOT NULL 
+	AND lower(CUST_EMAIL) NOT LIKE '%gtt.co.gy%'
+-------------------------------
+)sub2
+
+)
+SELECT 
+	External_ID,
+	ACCOUNTNUMBER,
+	SUBSCR_NO,
+	CUST_TYPE,
+	PRIMARY_OFFER,
+	OFFER_NAME,
+	SERVICE,
+	FIRSTNAME,
+	LASTNAME,
+	SERVICEADDRESS1,
+	SERVICEADDRESS2,
+	SERVICEADDRESS3,
+	SERVICEADDRESS4,
+    CITY,
+    CONTACT1_PHONE,
+	CONTACT2_PHONE,
+    CUST_EMAIL
+	
+FROM 
+	randomly_sorted_subscribers
+where
+    random_sort <= 4000;

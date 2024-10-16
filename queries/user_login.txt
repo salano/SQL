@@ -1,0 +1,1 @@
+select * from sec_idm_purged_users order by last_login_time

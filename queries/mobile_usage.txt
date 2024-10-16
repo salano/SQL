@@ -1,0 +1,225 @@
+SELECT 
+              AE.RANGE_MAP_EXTERNAL_ID AS EXTERNAL_ID,
+              AE.DATE_ENTER_ACTIVE AS ACTIVE_DT,
+              AE.CURRENT_STATE,
+              SSV.DISPLAY_VALUE AS STATE_DESCRIPTION,
+              USG.VOICE_USG_MINUTES,
+              USG.VOICE_USG_REV,
+              PURC.REVENUE_VOICE AS VOICE_PURC_REV,
+              USG.SMS_COUNT,
+              USG.SMS_USG_REV,
+              PURC.REVENUE_SMS AS SMS_PURC_REV,
+              USG.MBYTES,
+              USG.DATA_USG_REV,
+              PURC.REVENUE_DATA AS DATA_PURC_REV,
+              (USG.VOICE_USG_REV + PURC.REVENUE_VOICE + USG.SMS_USG_REV + PURC.REVENUE_SMS + USG.DATA_USG_REV + PURC.REVENUE_DATA) AS TOTAL_REV,
+              RCHG.RCHG_COUNT,
+              RCHG.RCHG_AMOUNT
+FROM ATNI_PROD.GTT_REPORTING.ACCOUNT_SUBSCRIBER_EXTRACT AE
+              JOIN ATNI_PROD.GTT_REPORTING.SUBSCRIBER_STATE_ID_VALUES  SSV
+              ON SSV.STATE_ID = AE.CURRENT_STATE
+              AND SSV.LEVEL_CODE = 2
+              LEFT JOIN (
+                             SELECT 
+                                           CD.SUBSCR_NO,
+                                           SUM(CASE WHEN CD.APPLICATION_ID = 1 THEN CD.PRIMARY_UNITS ELSE 0 END) / 60 AS VOICE_USG_MINUTES,
+                                           SUM(CASE WHEN CD.APPLICATION_ID = 1 AND CD.BALANCE_ID = 89 THEN (CD.AMOUNT - CD.TOTAL_TAX) ELSE 0 END) / 100 AS VOICE_USG_REV,
+                                           SUM(CASE WHEN CD.APPLICATION_ID = 2 THEN 1 ELSE 0 END) AS SMS_COUNT,
+                                           SUM(CASE WHEN CD.APPLICATION_ID = 2 AND CD.BALANCE_ID = 89 THEN (CD.AMOUNT - CD.TOTAL_TAX) ELSE 0 END) / 100 AS SMS_USG_REV,
+                                           SUM(CASE WHEN CD.APPLICATION_ID IN (7,10) THEN (CD.PRIMARY_UNITS) ELSE 0 END) / 1048576 AS MBYTES,
+                                           SUM(CASE WHEN CD.APPLICATION_ID IN (7,10) AND CD.BALANCE_ID = 89 THEN (CD.AMOUNT - CD.TOTAL_TAX) ELSE 0 END) / 100 AS DATA_USG_REV
+                             FROM ATNI_PROD.GTT_REPORTING.CDR_DATA CD
+                             WHERE DATE(CD.TRANS_DT) BETWEEN to_date('2020-01-01','YYYY-MM-DD') AND date(current_date)
+                             AND CD.SUBSCR_NO IN (SELECT subscr_no FROM ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP WHERE is_current = 1 AND
+													account_no in(
+														'20991873',
+													'20992216',
+													'20992674',
+													'20992910',
+													'20992939',
+													'20992940',
+													'20993310',
+													'20998699',
+													'20999068',
+													'20999272',
+													'20999345',
+													'20999587',
+													'20999932',
+													'20999980',
+													'21000250',
+													'21394529',
+													'21650185',
+													'21650186',
+													'21650187',
+													'21650188',
+													'21650189',
+													'21650191',
+													'21650192',
+													'21650193',
+													'21650198',
+													'21650199',
+													'21650200'
+													
+													))
+                             AND CD.APPLICATION_ID IN (1,2,7,10)
+                             GROUP BY 1) USG
+              ON USG.SUBSCR_NO = AE.SUBSCR_NO
+              LEFT JOIN (
+                             SELECT
+                                           Detail.SUBSCR_NO,
+                                           COUNT(DISTINCT Detail.OFFER_INST_ID) AS SUBSCRIPTION_COUNT,
+                                           SUM(Detail.CHARGED_AMOUNT - Detail.TOTAL_TAX) AS REVENUE_PREPAID, 
+                                           SUM(Detail.TOTAL_TAX) AS TAX_PREPAID,
+                                           SUM(Detail.CHARGED_AMOUNT) AS CHARGED_AMOUNT,
+                                           SUM(CASE WHEN Detail.RC_TYPE = 'Unknown' THEN Detail.CHARGED_AMOUNT - Detail.TOTAL_TAX ELSE 0 END) AS REVENUE_PLAN,
+                                           SUM(CASE WHEN Detail.RC_TYPE = 'Voice' THEN Detail.CHARGED_AMOUNT - Detail.TOTAL_TAX ELSE 0 END) AS REVENUE_VOICE,
+                                           SUM(CASE WHEN Detail.RC_TYPE = 'SMS' THEN Detail.CHARGED_AMOUNT - Detail.TOTAL_TAX ELSE 0 END) AS REVENUE_SMS,
+                                           SUM(CASE WHEN Detail.RC_TYPE = 'Data' THEN Detail.CHARGED_AMOUNT - Detail.TOTAL_TAX ELSE 0 END) AS REVENUE_DATA
+                             FROM
+                                           (SELECT 
+                                                          A.APPLY_DATE,
+                                                          A.RC_TERM_INST_ID,
+                                                          A.PARENT_ACCOUNT_NO AS ACCOUNT_NO,
+                                                          A.PARENT_SUBSCR_NO AS SUBSCR_NO,
+                                                          A.OFFER_ID,
+                                                          D.DISPLAY_VALUE AS OFFER_DESCRIPTION,
+                                                          A.RC_TERM_ID,
+                                                          F.DISPLAY_VALUE AS RC_TERM_DISPLAY_VALUE,
+                                                          CASE WHEN UPPER(F.DISPLAY_VALUE) LIKE '%DATA%' THEN 'Data'
+                                                                        WHEN UPPER(F.DISPLAY_VALUE) LIKE '%VOICE%' THEN 'Voice'
+                                                                        WHEN UPPER(F.DISPLAY_VALUE) LIKE '%SMS%' THEN 'SMS'
+                                                                        ELSE 'Unknown' END AS RC_TYPE,
+                                                          A.NUM_DAYS,
+                                                          B.OFFER_TYPE,
+                                                          E.OFFER_INST_ID,
+                                                          C.BALANCE_ID,
+                                                          A.AMOUNT/100 as AMOUNT,
+                                                          A.TOTAL_TAX/100 AS TOTAL_TAX,
+                                                          C.BALANCE_AMOUNT/100 AS CHARGED_AMOUNT
+                                           FROM ATNI_PROD.GTT_REPORTING.RC A
+                                                          LEFT JOIN ATNI_PROD.GTT_REPORTING.OFFER_REF B
+                                                          ON A.OFFER_ID = B.OFFER_ID AND B.RESELLER_VERSION_ID = (SELECT MAX(reseller_version_id) FROM ATNI_PROD.GTT_REPORTING.reseller_version)
+                                                          JOIN ATNI_PROD.GTT_REPORTING.RC_BALANCE C
+                                                          ON A.RC_TERM_INST_ID = C.RC_TERM_INST_ID AND A.BILLING_SEQUENCE_NUMBER = C.BILLING_SEQUENCE_NUMBER AND C.PAYMENT_MODE = 1
+                                                          LEFT JOIN ATNI_PROD.GTT_REPORTING.OFFER_VALUES D
+                                                          ON A.OFFER_ID = D.OFFER_ID AND D.RESELLER_VERSION_ID = (SELECT MAX(RESELLER_VERSION_ID) FROM ATNI_PROD.GTT_REPORTING.OFFER_VALUES)
+                                                          LEFT JOIN ATNI_PROD.GTT_REPORTING.RC_TERM_INST_EXTRACT E
+                                                          ON E.RC_TERM_INST_ID = A.RC_TERM_INST_ID AND DATE(E.EXTRACT_FILE_DATE) = current_date-day(current_date)+1
+                                                          LEFT JOIN ATNI_PROD.GTT_REPORTING.RC_TERM_VALUES F
+                                                          ON F.RC_TERM_ID = A.RC_TERM_ID AND F.RESELLER_VERSION_ID = (SELECT MAX(RESELLER_VERSION_ID) FROM ATNI_PROD.GTT_REPORTING.RC_TERM_VALUES)
+                                           WHERE B.SERVICE_CATEGORY_ID=4 AND B.PAYMENT_MODE=1 AND C.BALANCE_ID = 89
+                                           AND A.PARENT_SUBSCR_NO IN (SELECT subscr_no FROM ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP WHERE is_current = 1 AND
+																		account_no in(
+																			'20991873',
+																		'20992216',
+																		'20992674',
+																		'20992910',
+																		'20992939',
+																		'20992940',
+																		'20993310',
+																		'20998699',
+																		'20999068',
+																		'20999272',
+																		'20999345',
+																		'20999587',
+																		'20999932',
+																		'20999980',
+																		'21000250',
+																		'21394529',
+																		'21650185',
+																		'21650186',
+																		'21650187',
+																		'21650188',
+																		'21650189',
+																		'21650191',
+																		'21650192',
+																		'21650193',
+																		'21650198',
+																		'21650199',
+																		'21650200'
+																		
+																		))
+                                           AND to_DATE(A.APPLY_DATE) BETWEEN to_date('2020-01-01','YYYY-MM-DD') AND date(current_date)
+                                           AND A.AMOUNT != 0) Detail
+                             GROUP BY 1) PURC
+              ON PURC.SUBSCR_NO = AE.SUBSCR_NO
+              LEFT JOIN (
+                             SELECT 
+                                           RH.SUBSCR_NO,
+                                 COUNT(DISTINCT RH.RECHARGE_ID) AS RCHG_COUNT,
+                                           SUM(RB.AMOUNT/-100) AS RCHG_AMOUNT
+                             FROM ATNI_PROD.GTT_REPORTING.RECHARGE_HISTORY RH
+                                           JOIN ATNI_PROD.GTT_REPORTING.RECHARGE_HISTORY_BALANCE RB
+                                           ON RH.RECHARGE_ID = RB.RECHARGE_ID AND RH.RECHARGE_ID2 = RB.RECHARGE_ID2
+                                           LEFT JOIN ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP EE
+                                           ON RH.SUBSCR_NO = EE.SUBSCR_NO AND DATE(EE.EFFECTIVE_DT) <= CURRENT_DATE AND  DATE(EE.EXPIRY_DT) > CURRENT_DATE
+                                           AND EE.EXTERNAL_ID_TYPE = 1 AND EE.IS_CURRENT = 1
+                             WHERE RB.PAYMENT_MODE = 1 AND RB.BALANCE_ID = 89  
+                             AND DATE(RH.RECHARGE_DATE_TIME) BETWEEN to_date('2020-01-01','YYYY-MM-DD') AND date(current_date)
+                             AND EE.SUBSCR_NO IN (SELECT subscr_no FROM ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP WHERE is_current = 1 AND
+													account_no in(
+														'20991873',
+													'20992216',
+													'20992674',
+													'20992910',
+													'20992939',
+													'20992940',
+													'20993310',
+													'20998699',
+													'20999068',
+													'20999272',
+													'20999345',
+													'20999587',
+													'20999932',
+													'20999980',
+													'21000250',
+													'21394529',
+													'21650185',
+													'21650186',
+													'21650187',
+													'21650188',
+													'21650189',
+													'21650191',
+													'21650192',
+													'21650193',
+													'21650198',
+													'21650199',
+													'21650200'
+													
+													))
+                             AND RB.AMOUNT < 0
+                             AND SUBSTRING(NVL(RH.RECHARGE_COMMMENT,''),1,8) != 'inswitch'
+                             GROUP BY 1) RCHG
+              ON RCHG.SUBSCR_NO = AE.SUBSCR_NO
+WHERE DATE(AE.EXTRACT_FILE_DATE) = CURRENT_DATE
+AND AE.SUBSCR_NO IN (SELECT subscr_no FROM ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP WHERE is_current = 1 AND
+						account_no in(
+							'20991873',
+						'20992216',
+						'20992674',
+						'20992910',
+						'20992939',
+						'20992940',
+						'20993310',
+						'20998699',
+						'20999068',
+						'20999272',
+						'20999345',
+						'20999587',
+						'20999932',
+						'20999980',
+						'21000250',
+						'21394529',
+						'21650185',
+						'21650186',
+						'21650187',
+						'21650188',
+						'21650189',
+						'21650191',
+						'21650192',
+						'21650193',
+						'21650198',
+						'21650199',
+						'21650200'
+						
+						))

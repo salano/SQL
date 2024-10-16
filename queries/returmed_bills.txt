@@ -1,0 +1,21 @@
+select distinct 
+  D.*,
+  /*c.ACCOUNT_NO,
+  BILL_FNAME || ' '||BILL_LNAME ||' '|| BILL_COMPANY Name,
+  BILL_ADDRESS1 ||' ' ||BILL_ADDRESS2 ||' '|| BILL_ADDRESS3||' ' || BILL_ADDRESS4||' ' || BILL_CITY||' ' || BILL_STATE||' ' || BILL_ZIP|| ' ' || BILL_COUNTY Address,
+  CUST_EMAIL Email,
+  CUST_PHONE1 ||' '  ||CUST_PHONE2 CustPhone,
+  CONTACT1_PHONE||' ' ||CONTACT2_PHONE ContactPhone,*/
+  c.DATE_INACTIVE,
+  c.account_status,
+  A.DISPLAY_VALUE as dispatch_method,
+  c.BILL_DISP_METH
+ FROM
+ 	CMF c right join
+	ADMIN.BILL_DISP_METH_VALUES A on c.BILL_DISP_METH = A.BILL_DISP_METH RIGHT JOIN
+	TMP_CHARM_DISC D on c.ACCOUNT_NO = D.ACCOUNT_NO
+	
+WHERE
+  c.IS_CURRENT = 'Y' --and
+  --c.DATE_INACTIVE is null and
+  order by 1

@@ -1,0 +1,16 @@
+#Venv on windows
+python 3.3 and greater
+
+#create a new environment with same python as global environment
+python -m venv projectName\venv
+
+#activate environment
+projectName\venv\scripts\activate.bat
+
+-- Don't put files in your environment
+
+#create a requirements file
+pip freeze > requirements.txt
+
+#deactivate environment
+deactivate

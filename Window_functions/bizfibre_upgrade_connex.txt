@@ -1,0 +1,61 @@
+
+SELECT 
+
+	* 
+from
+	(
+	SELECT 
+	  		DISTINCT 
+	  		ins.ACTIVE_DT activate_date,
+	  		C.BILL_FNAME ,
+			C.BILL_LNAME ,
+			C.BILL_COMPANY ,
+			C.BILL_ADDRESS1 ,
+			C.BILL_ADDRESS2 ,
+			C.BILL_ADDRESS3 ,
+			C.BILL_ADDRESS4 ,
+			C.BILL_CITY ,
+	  		ins.ACCOUNT_NO,
+	  		ins.SUBSCR_NO,
+	  		O.DISPLAY_VALUE current_service,
+	  		nth_value(O.DISPLAY_VALUE, 2) OVER 
+	  			(PARTITION BY ins.ACCOUNT_NO, ins.SUBSCR_NO ORDER BY ins.ACTIVE_DT DESC 
+	  			RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+	  			) AS previous_service,
+	  		nth_value(ins.ACTIVE_DT, 2) OVER 
+	  			(PARTITION BY ins.ACCOUNT_NO, ins.SUBSCR_NO ORDER BY ins.ACTIVE_DT DESC 
+	  			RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+	  			) AS previous_service_activate_date
+	  FROM 
+	  	(SELECT distinct offer_id, ACCOUNT_NO, SUBSCR_NO,disconnect_reason, ACTIVE_DT FROM  ATNI_PROD.GTT_REPORTING.OFFER_INST WHERE  offer_id IN (
+											SELECT
+											try_TO_NUMERIC(REPLACE(PRODUCTCODE,'MP',''))
+											FROM
+											ATNI_PROD.SC_OUTPUT.DIMPRODUCT
+											WHERE
+											LEAFLEVELNAME='Internet'
+											AND SOURCESYSTEMID=1
+											AND PRODUCTCODE LIKE 'MP%'
+										)  
+
+		or offer_id IN (11503,11504,11505)
+)   ins
+	  
+	  
+	  	LEFT JOIN ATNI_PROD.GTT_REPORTING.SUBSCRIBER_STATUS_EXTRACT S
+	  		ON ins.SUBSCR_NO = S.SUBSCR_NO  AND date(S.EXTRACT_FILE_DATE) = date(CURRENT_DATE()) AND S.INACTIVE_DT IS null
+	  	LEFT JOIN ATNI_PROD.GTT_REPORTING.CMF_EXTRACT  C
+		       ON ins.ACCOUNT_NO = C.ACCOUNT_NO  AND date(C.EXTRACT_FILE_DATE) = date(CURRENT_DATE())
+		JOIN
+					ATNI_PROD.GTT_REPORTING.OFFER_VALUES O ON ins.OFFER_ID=O.OFFER_ID AND RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM ATNI_PROD.GTT_REPORTING.OFFER_VALUES)
+	 WHERE 
+	 	--date(ins.ACTIVE_DT)   >= to_date('2022-01-01','YYYY-MM-dd') 
+	 	ins.OFFER_ID in(11428,11209,11115,11114,11503,11504,11505)
+	 	AND ins.ACCOUNT_NO <> '0'
+	AND O.DISPLAY_VALUE NOT LIKE '%Plus%'
+	) X 
+
+	WHERE date(previous_service_activate_date)   >= to_date('2022-01-01','YYYY-MM-dd') 
+	AND current_service != previous_service
+	AND upper(BILL_LNAME) NOT LIKE '%UAT%'
+	AND upper(BILL_COMPANY) NOT LIKE '%UAT%'

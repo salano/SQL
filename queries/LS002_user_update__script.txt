@@ -1,0 +1,42 @@
+SELECT
+a.user_id AS "User"
+,a.IU_LOCK AS "User Lock State"
+,a.IU_ACCT_STATE AS " User Disabled State"
+,a.iu_first_name AS "First Name"
+,a.iu_last_name AS "Last Name"
+,a.iu_middle_name AS "Designation"
+,a.IU_PRIORITY_GRP AS "Default Group"
+,siga.GRP_NAME AS "Permissions(Group)"
+,sira.REALM_NAME AS "Realm Name"
+,a.IU_CREATE_DT AS "created"
+,a.iu_last_login AS "Last Login"
+,max(b.create_dt) AS "Last_Password Change"
+,SYSDATE AS "Exeution Time of Script"
+--,a.iu_department AS "Department"
+FROM
+secuser.sec_idm_user_a a
+JOIN secuser.sec_pass_policy_hist_a b ON
+a.iu_id = b.pm_user_id
+JOIN secuser.SEC_IDM_USER_GROUP siuga ON
+siuga.IUG_USR_ID = a.IU_ID
+JOIN SECUSER.SEC_IDM_GROUP siga ON
+siga.IG_ID = SIUGA.IUG_GRP_ID
+JOIN SECUSER.SEC_IDM_REALM sira ON
+sira.IRL_ID = a.IU_RLID
+GROUP BY
+a.user_id
+,a.iu_last_login
+,a.IU_LOCK
+,a.IU_ACCT_STATE
+,a.iu_first_name
+,a.iu_middle_name
+,a.iu_department
+,a.iu_last_name
+,a.IU_PRIORITY_GRP
+,siga.GRP_NAME
+,sira.REALM_NAME
+,SYSDATE
+,a.IU_CREATE_DT
+ORDER BY
+sira.realm_name,1 ASC
+  

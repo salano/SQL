@@ -1,0 +1,51 @@
+SELECT /*+ parallel(a ,8)*/ a.account_no,
+bilL_fname||' '||bill_lname||' '||bill_company AS NAME,
+TRUNC(trans_date) AS trans_date,
+TRUNC(post_date) AS post_date,
+case
+when a.bmf_trans_type not in(-18,90) then ( trans_amount * -1)/100
+else trans_amount/100
+end
+trans_amount,
+null as total_tax_postpaid,
+null as trans_sign,
+annotation,
+e.description_text,
+trans_submitter as agent,
+null as last_reviewed_name,
+b.display_value AS payment_location ,
+action_code ,
+'Payment' as adjustment_type,
+tracking_id
+FROM bmf a JOIN trans_source_values b ON a.trans_source = b.trans_source JOIN cmf c ON a.account_no = c.account_no
+join BMF_TRANS_DESCR d on a.bmf_trans_type = d.bmf_trans_type join descriptions e on d.description_code = e.description_code
+WHERE
+a.bmf_trans_type not in(16,33,51,52,53,80) and
+TRUNC(post_date)  = trunc(current_date - 1) 
+and (trim(trans_submitter) not like '%GTTSAPI%' and trim(trans_submitter) not like '%LBX%' and trim(trans_submitter) not like '%MMS%' ) 
+
+union
+
+SELECT
+a.account_no,
+null as name,
+TRUNC(transact_date) AS trans_date ,
+null AS post_date,
+a.amount/100 AS trans_amount, 
+a.total_tax_postpaid/100 as total_tax_postpaid,
+DECODE(b.trans_sign,1,'debit',-1,'credit') trans_sign,
+a.annotation,
+DESCRIPTION_TEXT,
+a.supervisor_name as agent,
+last_reviewed_name,
+null as payment_location,
+null as action_code,
+'Invoice' as adjustment_type,
+TRACKING_ID
+FROM
+adj a LEFT JOIN ADJ_TRANS_DESCR b ON a.adj_trans_code=b.adj_trans_code
+LEFT JOIN DESCRIPTIONS C ON b. DESCRIPTION_CODE = C.DESCRIPTION_CODE
+WHERE b. trans_sign in (1, -1) --AND IS_DISCONNECT_CREDIT = 0 AND IS_NEGATIVE_BILL_ADJ <> 1 --AND
+--UPPER(supervisor_name) <> 'CONVERSION' AND SUBSTR(UPPER(ORIG_SUBMITTER_NAME) ,1 ,3) <> 'BIP' AND a.amount <> 0 and no_bill = 0 and SUBSTR(UPPER(orig_submitter_name),1,3) NOT IN( 'BIP' ,'RCS') AND amount_postpaid <> 0
+and trunc(transact_date) = trunc(current_date - 1) 
+and last_reviewed_name not like '%RCS%'

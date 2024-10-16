@@ -1,0 +1,29 @@
+SELECT
+    
+    mi.account_id,
+    TO_CHAR(mh.transfer_date, 'YYYY-MM')  period,
+	sum(mi.approved_value/10000) AS approved_value,
+    count(1) as approved_count
+FROM
+    mmoney_live.mtx_transaction_items    mi,
+    mmoney_live.mtx_transaction_header   mh
+WHERE
+
+    trunc(mh.transfer_date) between  '01-aug-20' and '31-oct-20'  --TO_DATE (?,'mm/dd/yy') and TO_DATE (?,'mm/dd/yy') + 6
+    AND mh.transfer_status = 'TS'
+    AND mi.transfer_id = mh.transfer_id
+    AND ( mi.category_code = 'SUBS'
+          OR mi.category_code = 'RT' )
+    AND mh.service_type IN (
+        --'MERCHPAY',     -- merchant payment
+        --'CASHIN',       -- cashin
+        --'P2PNONREG',    -- send money to unregistered sub
+        --'P2P',          -- send money to registered sub
+        'RC'           -- recharge
+        --'BILLPAY',      -- bill payment
+        --'CASHOUT'       -- cashout
+    )
+    AND mi.txn_sequence_number =  '1'
+    and mh.reconciliation_done is null -- non-NULL value in this field means txn was rolled back
+
+group by mi.account_id, TO_CHAR(mh.transfer_date, 'YYYY-MM')

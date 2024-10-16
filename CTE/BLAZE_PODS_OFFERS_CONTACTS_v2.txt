@@ -1,0 +1,132 @@
+CREATE OR REPLACE VIEW ATNI_DEV.GTT_REPORTING.VW_PLUME_POD_ROLLOUT as 
+ 
+SELECT 
+ tmp.account_num, tmp.PHONE_NUM, tmp."ModemType ", C.bill_fname, C.bill_lname, C.bill_company, C.cust_email,
+	    C.statement_to_email, C.contact1_phone, C.contact2_phone,
+	    GATEWAY_ACTIVE_DATE,
+	    POWER_POD_GATEWAY,
+	    SERVICE_FEE_ACTIVE,
+	    PLUME_MRC_FLEX_DISC_ACTIVE,
+	    PLUME_WELCOME_DISC_ACTIVE,
+	    SUPER_POD_1,
+	    POWER_POD_1,
+	    POWER_POD_2,
+	    POWER_POD_3,
+	    POWER_POD_4,
+	    POWER_POD_5,
+	    POWER_POD_6
+FROM ATNI_DEV.GTT_REPORTING."tmp_customers_requiring_pod" tmp
+	LEFT JOIN ATNI_PROD.GTT_REPORTING.cmf_extract c
+	 ON tmp.account_num = c.account_no AND date(c.extract_file_date) = current_date
+LEFT JOIN 
+	( 
+		WITH PLUME_CTE (ACCOUNT_NO, POWER_POD_1, POWER_POD_2, POWER_POD_3, POWER_POD_4, POWER_POD_5, POWER_POD_6 ) AS 
+			(
+				SELECT 
+					DISTINCT 
+					E.ACCOUNT_NO,
+					nth_value(E.EXTERNAL_ID, 1) OVER 
+			  			(PARTITION BY E.ACCOUNT_NO ORDER BY E.EXTERNAL_ID DESC 
+			  			RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+			  			) AS POWER_POD_1,
+			  	nth_value(E.EXTERNAL_ID, 2) OVER 
+			  			(PARTITION BY E.ACCOUNT_NO ORDER BY E.EXTERNAL_ID DESC 
+			  			RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+			  			) AS POWER_POD_2,
+			  	nth_value(E.EXTERNAL_ID, 3) OVER 
+			  			(PARTITION BY E.ACCOUNT_NO ORDER BY E.EXTERNAL_ID DESC 
+			  			RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+			  			) AS POWER_POD_3,
+			  	nth_value(E.EXTERNAL_ID, 4) OVER 
+			  			(PARTITION BY E.ACCOUNT_NO ORDER BY E.EXTERNAL_ID DESC 
+			  			RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+			  			) AS POWER_POD_4,
+			  	nth_value(E.EXTERNAL_ID, 5) OVER 
+			  			(PARTITION BY E.ACCOUNT_NO ORDER BY E.EXTERNAL_ID DESC 
+			  			RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+			  			) AS POWER_POD_5,
+			  	nth_value(E.EXTERNAL_ID, 6) OVER 
+			  			(PARTITION BY E.ACCOUNT_NO ORDER BY E.EXTERNAL_ID DESC 
+			  			RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+			  			) AS POWER_POD_6
+		
+				FROM 
+					ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT E
+				WHERE 
+					date(E.extract_file_date) = current_date
+					AND E.EXTERNAL_ID_TYPE = 48
+		
+			),
+			POD_CTE (ACCOUNT_NO, SUPER_POD_1) AS 
+			( 
+				SELECT 
+					DISTINCT 
+					E.ACCOUNT_NO,
+					nth_value(E.EXTERNAL_ID, 1) OVER 
+			  			(PARTITION BY E.ACCOUNT_NO ORDER BY E.EXTERNAL_ID DESC 
+			  			RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+			  			) AS SUPER_POD_1
+			   FROM 
+					ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT E
+				WHERE 
+					date(E.extract_file_date) = current_date
+					AND E.EXTERNAL_ID_TYPE = 47
+			
+			)
+		
+			SELECT
+				distinct
+			    tmp.account_num, tmp.PHONE_NUM, tmp."ModemType ", bill_fname, bill_lname, bill_company, cust_email,
+			    statement_to_email, contact1_phone, contact2_phone,
+			    min(CASE WHEN OI.OFFER_ID = 11436 THEN OI.ACTIVE_DT END) GATEWAY_ACTIVE_DATE,
+			    max(CASE WHEN OI.OFFER_ID = 11436 THEN 'YES' END) POWER_POD_GATEWAY,
+			    max(CASE WHEN OI.OFFER_ID = 11331 THEN 'YES' END) SERVICE_FEE_ACTIVE,
+			    max(CASE WHEN OI.OFFER_ID = 11481 THEN 'YES' END) PLUME_MRC_FLEX_DISC_ACTIVE,
+			    max(CASE WHEN OI.OFFER_ID = 11342 THEN'YES' END) PLUME_WELCOME_DISC_ACTIVE,
+			    max(PP.SUPER_POD_1) SUPER_POD_1,
+			    max(P.POWER_POD_1) POWER_POD_1,
+			    max(P.POWER_POD_2) POWER_POD_2,
+			    max(P.POWER_POD_3) POWER_POD_3,
+			    max(P.POWER_POD_4) POWER_POD_4,
+			    max(P.POWER_POD_5) POWER_POD_5,
+			    max(P.POWER_POD_6) POWER_POD_6
+			   
+			    
+			FROM ATNI_DEV.GTT_REPORTING."tmp_customers_requiring_pod" tmp
+			LEFT JOIN ATNI_PROD.GTT_REPORTING.cmf_extract c
+			 ON tmp.account_num = c.account_no AND date(c.extract_file_date) = current_date
+			left join ATNI_PROD.GTT_REPORTING.OFFER_INST OI on tmp.account_num = OI.account_no
+			LEFT JOIN ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT E
+				ON  tmp.account_num = E.account_no AND date(E.extract_file_date) = current_date
+			LEFT JOIN PLUME_CTE P 
+				ON  tmp.account_num = P.account_no
+			LEFT JOIN POD_CTE PP 
+				ON  tmp.account_num = PP.account_no
+			JOIN ATNI_PROD.GTT_REPORTING.OFFER_VALUES OV 
+				ON OI.OFFER_ID = OV.OFFER_ID AND OV.reseller_version_id = (Select max(reseller_version_id) from ATNI_PROD.GTT_REPORTING.offer_values)
+				
+			WHERE 
+			
+				OI.offer_id IN (
+			 				11342,
+						  11340,
+						  11338,
+						  11332,
+						  11330,
+						  11331,
+						  11481,
+						  11333,
+						  11334,
+						  11335,
+						  11336,
+						  11337,
+						  11338,
+						  11436
+			 		)
+		
+			GROUP BY 1,2,3,4,5,6,7,8,9,10
+	) X
+	 ON tmp.account_num = X.account_num
+	 
+ORDER BY 1,10,11,12,13
+

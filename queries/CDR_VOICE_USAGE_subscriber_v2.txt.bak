@@ -1,0 +1,516 @@
+USE WAREHOUSE XS1;
+----------------------Get GENBAND INCOMING AND OUTGOING CALLS-----------------------
+WITH GEN_RECORDS (u_month,usage_date,BID,ACCOUNT_NO,DURATION_SEC, outgoing,incoming, out_count,IN_COUNT,total_count  ) AS (
+SELECT 
+			DISTINCT
+			GEND.u_month
+			,usage_date
+			,GEND.BID
+			,GEND.ACCOUNT_NO
+			,sum(NVL(GEND.O_ELAPSED_TIME,0) + NVL(GEND.I_ELAPSED_TIME,0)) DURATION_SEC
+			,sum(GEND.O_ELAPSED_TIME) outgoing
+			,sum(GEND.I_ELAPSED_TIME) incoming
+			,sum(GEND.out_count) out_count
+			,sum(GEND.IN_COUNT) IN_COUNT
+			,sum(NVL(GEND.out_count, 0)+ NVL(GEND.IN_COUNT, 0)) total_count
+			
+		FROM 
+			(
+		
+				SELECT DISTINCT 
+				/* 
+				 * OUTGOING CALLS
+				 * */
+				   to_char(CDR.CONNECT_DATETIME, 'YYYY-MM') u_month
+				   ,date(CDR.CONNECT_DATETIME) usage_date
+				   ,ORIGINATING_NUMBER BID
+				   ,E.ACCOUNT_NO 
+				   , 1 AS out_count
+				   ,0 AS IN_COUNT
+				   ,ELAPSED_TIME O_ELAPSED_TIME
+				   ,0 I_ELAPSED_TIME
+				 FROM 
+				 	ATNI_PROD.GTT_REPORTING.GENBAND_CDR CDR
+				 	LEFT JOIN ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT E 
+				 		ON CDR.ORIGINATING_NUMBER = E.EXTERNAL_ID AND date(E.EXTRACT_FILE_DATE) = date(CURRENT_DATE()) 
+				 	
+				 WHERE 
+				 --date(CONNECT_DATETIME)	>= ADD_MONTHS(CURRENT_date, -13)
+				 date(CONNECT_DATETIME)	>= ADD_MONTHS(CURRENT_date, -1)
+				 AND ELAPSED_TIME > 0
+				 AND (SUBSTRING(ORIGINATING_NUMBER,1,6) IN (SELECT DISTINCT PREFIX_LONG FROM ATNI_PROD.GTT_REPORTING.GTT_PREFIXES)
+				     OR SUBSTRING(ORIGINATING_NUMBER,1,4) = '5925' -- Blaze calls
+				     OR SUBSTRING(ORIGINATING_NUMBER,1,6) IN (SELECT distinct CONCAT('592', PREFIX) FROM ATNI_DEV.GTT_REPORTING.EXCHANGE_NAMES) -- LANDLINE_INTER 
+				 )
+				 AND TRUNKID1 NOT IN (103600000,106400000,106500000,103290000,103330000,103380000,103490000,103520000,103530000,103570000,103590000,103610000,
+				 						103630000,103640000,103650000,103660000,103670000,103680000,103690000,103700000,103710000,103720000,103730000,103800000,102000000)
+		
+				 AND LENGTH(ORIGINATING_NUMBER) = 10 
+				 AND  E.INACTIVE_DATE IS NULL
+				 AND E.EXTERNAL_ID_TYPE <> 11
+				 UNION 
+				 
+				 SELECT DISTINCT
+				/* 
+				 * INCOMING CALLS
+				 * */
+				 to_char(CDR.CONNECT_DATETIME, 'YYYY-MM') u_month
+				 ,date(CDR.CONNECT_DATETIME) usage_date
+				   ,concat('592',TERMINATING_NUMBER) BID
+				   , 0 AS out_count
+				   ,1 AS IN_COUNT
+				   ,E.ACCOUNT_NO 
+				   ,0 O_ELAPSED_TIME
+				   ,ELAPSED_TIME I_ELAPSED_TIME
+				 FROM 
+				 	ATNI_PROD.GTT_REPORTING.GENBAND_CDR CDR
+				 	LEFT JOIN ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT E 
+				 		ON concat('592',TERMINATING_NUMBER) = E.EXTERNAL_ID AND date(E.EXTRACT_FILE_DATE) = date(CURRENT_DATE())
+				 WHERE 
+				 --date(CONNECT_DATETIME)	>= ADD_MONTHS(CURRENT_date, -13)
+				 date(CONNECT_DATETIME)	>= ADD_MONTHS(CURRENT_date, -1)
+				 AND ELAPSED_TIME > 0
+				  --AND concat('592',CDR.TERMINATING_NUMBER) = '5922750261'
+				 AND (concat('592',SUBSTRING(TERMINATING_NUMBER,1,3)) IN (SELECT DISTINCT PREFIX_LONG FROM ATNI_PROD.GTT_REPORTING.GTT_PREFIXES)
+				     OR SUBSTRING(TERMINATING_NUMBER,1,2) = '50' -- Blaze calls
+				     OR SUBSTRING(TERMINATING_NUMBER,1,3) IN (SELECT distinct PREFIX FROM ATNI_DEV.GTT_REPORTING.EXCHANGE_NAMES) -- LANDLINE_INTER 
+				 )
+				 AND TRUNKID1 NOT IN (103600000,106400000,106500000,103290000,103330000,103380000,103490000,103520000,103530000,103570000,103590000,103610000,
+										103630000,103640000,103650000,103660000,103670000,103680000,103690000,103700000,103710000,103720000,103730000,103800000, 102000000)
+		 	 AND LENGTH(TERMINATING_NUMBER) = 7 
+		 	 AND  E.INACTIVE_DATE IS NULL
+		 	 AND E.EXTERNAL_ID_TYPE <> 11
+			) GEND
+		 	--WHERE BID = '5922340399'
+		 	GROUP BY 1,2,3, 4
+	), 
+	
+	
+----------------------Get AIRSPAN INCOMING AND OUTGOING CALLS-----------------------
+ AIRSPAN_RECORDS  (u_month,BID,ACCOUNT_NO,usage_date,DURATION_SEC, outgoing,incoming, out_count,IN_COUNT,total_count ) AS (
+		SELECT 
+					DISTINCT
+					AIR.u_month
+					,AIR.BID
+					,AIR.ACCOUNT_NO
+					,usage_date
+					,sum(NVL(AIR.O_ELAPSED_TIME, 0) + NVL(AIR.I_ELAPSED_TIME, 0)) DURATION_SEC
+					,sum(AIR.O_ELAPSED_TIME) outgoing
+					,sum(AIR.I_ELAPSED_TIME) incoming
+					,sum(AIR.out_count) out_count
+					,sum(AIR.IN_COUNT) IN_COUNT
+					,sum(NVL(AIR.out_count, 0)+ NVL(AIR.IN_COUNT, 0) ) total_count
+					
+				FROM 
+					(
+				
+						SELECT 
+						distinct
+						/* 
+						 * OUTGOING CALLS
+						 * */
+						   to_char(CDR.CALL_START_DATETIME, 'YYYY-MM') u_month
+						   ,date(CDR.CALL_START_DATETIME) usage_date
+						   ,CALLING_PARTY_NUMBER BID
+						   ,E.ACCOUNT_NO 
+				   			, 1 AS out_count
+				   			,0 AS IN_COUNT
+						   ,DURATION O_ELAPSED_TIME
+						   ,0 I_ELAPSED_TIME
+						 FROM 
+						 	ATNI_PROD.GTT_REPORTING.AIRSPAN_CDR CDR
+						 	LEFT JOIN ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT E 
+				 				ON CDR.CALLING_PARTY_NUMBER = E.EXTERNAL_ID AND date(E.EXTRACT_FILE_DATE) = date(CURRENT_DATE())
+						 	
+						 WHERE 
+						 --date(CALL_START_DATETIME)	>= ADD_MONTHS(CURRENT_date, -13)
+						 date(CALL_START_DATETIME)	>= ADD_MONTHS(CURRENT_date, -1)
+						 AND DURATION > 0
+						 --AND CDR.ORIGINATING_NUMBER = '5922750261'
+						 AND (SUBSTRING(CALLING_PARTY_NUMBER,1,6) IN (SELECT DISTINCT PREFIX_LONG FROM ATNI_PROD.GTT_REPORTING.GTT_PREFIXES)
+						     OR SUBSTRING(CALLING_PARTY_NUMBER,1,4) = '5925' -- Blaze calls
+						     OR SUBSTRING(CALLING_PARTY_NUMBER,1,6) IN (SELECT distinct CONCAT('592', PREFIX) FROM ATNI_DEV.GTT_REPORTING.EXCHANGE_NAMES) -- LANDLINE_INTER 
+						 )
+						AND LENGTH(CALLING_PARTY_NUMBER) = 10 
+						AND  E.INACTIVE_DATE IS NULL
+						AND E.EXTERNAL_ID_TYPE <> 11
+						 
+						 UNION 
+						 
+						 SELECT 
+						 distinct
+						/* 
+						 * INCOMING CALLS
+						 * */
+						 to_char(CDR.CALL_START_DATETIME, 'YYYY-MM') u_month
+						 ,date(CDR.CALL_START_DATETIME) usage_date
+						   ,CALLED_PARTY_NUMBER_NP BID
+						   ,E.ACCOUNT_NO 
+				   			, 0 AS out_count
+				   			,1 AS IN_COUNT
+						   ,0 O_ELAPSED_TIME
+						   ,DURATION I_ELAPSED_TIME
+						 FROM 
+						 	ATNI_PROD.GTT_REPORTING.AIRSPAN_CDR CDR
+						 	LEFT JOIN ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT E 
+				 				ON CDR.CALLED_PARTY_NUMBER_NP = E.EXTERNAL_ID AND date(E.EXTRACT_FILE_DATE) = date(CURRENT_DATE())
+			
+						 WHERE 
+						 --date(CALL_START_DATETIME)	>= ADD_MONTHS(CURRENT_date, -13)
+						 date(CALL_START_DATETIME)	>= ADD_MONTHS(CURRENT_date, -1)
+						 AND DURATION > 0
+						  --AND concat('592',CDR.TERMINATING_NUMBER) = '5922750261'
+						 AND (SUBSTRING(CALLED_PARTY_NUMBER_NP,1,6) IN (SELECT DISTINCT PREFIX_LONG FROM ATNI_PROD.GTT_REPORTING.GTT_PREFIXES)
+						     OR SUBSTRING(CALLED_PARTY_NUMBER_NP,1,4) = '5925' -- Blaze calls
+						     OR SUBSTRING(CALLED_PARTY_NUMBER_NP,1,6) IN (SELECT distinct PREFIX FROM ATNI_DEV.GTT_REPORTING.EXCHANGE_NAMES) -- LANDLINE_INTER 
+						 )
+						 AND LENGTH(CALLED_PARTY_NUMBER_NP) = 10 
+						 AND  E.INACTIVE_DATE IS NULL
+						 AND E.EXTERNAL_ID_TYPE <> 11
+				
+				 	) AIR
+				 	GROUP BY 1,2,3, 4
+				 	
+				),
+	---------Merge with scorecard data for segmentation			
+	SCORECARD_RECORDS (
+						ACCOUNTNUMBER,
+						BID,
+						DATESTART,
+						line_of_service,
+						subline_of_service,
+					    subline_of_service_segment,
+						CUSTOMERTYPE
+					) AS 
+	
+	(
+						
+			SELECT
+				DISTINCT  
+				ACCOUNTNUMBER,
+				
+				BID,
+				date(A.DATESTART) DATESTART,
+				B.gen03levelname line_of_service,
+				B.gen04levelname subline_of_service,
+				B.gen05levelname subline_of_service_segment,
+				A.CUSTOMERTYPE
+			
+			FROM
+			
+			SC_INPUT.ODSSUBSCRIBERSNAPSHOT A
+			
+			INNER JOIN
+			
+			SC_OUTPUT.DIMPRODUCT B ON A.RATEPLANCODE::STRING=B.PRODUCTCODE
+			
+			                          --AND B.LEAFLEVELNAME='Mobile Prepaid Combo'
+			
+			                          AND B.SOURCESYSTEMID=1
+			
+			                          AND B.UNITCOUNTABLE=1
+			
+			                          AND B.REVENUECOUNTABLE=1
+			
+			INNER JOIN
+			
+			SC_OUTPUT.DIMCUSTOMERTYPE C ON A.CUSTOMERTYPE=C.CUSTOMERTYPECODE
+			
+			                            AND C.SOURCESYSTEMID=1
+			
+			                            AND C.UNITCOUNTABLE=1
+			
+			                            AND C.REVENUECOUNTABLE=1
+			
+			WHERE
+			
+			A.SOURCESYSTEMID=1 --GTT
+			
+			AND A.DATESTART >= ADD_MONTHS(current_date, -1)
+			
+			--AND A.STATUSCODE IN ('A','I','S','PD') --THESE STATUSES ARE CONSIDERED AS ENDING
+	),
+	
+	DATA_USAGE_RECORDS(SUBSCRIBER_ID, ACCOUNT_NO, DATE_PERIOD, RECEIVED_BYTES, TRANSMITTED_BYTES, TOTAL_BYTES) AS 
+	
+		( 
+		
+			SELECT
+				DISTINCT 
+				SW.SUBSCRIBER_ID
+				,E.ACCOUNT_NO
+				,date(sw.RECORD_TIMESTAMP) DATE_PERIOD
+				,sum(SW.RX_BYTES) RECEIVED_BYTES
+				,sum(SW.TX_BYTES) TRANSMITTED_BYTES
+				,sum(SW.TOTAL_BYTES) TOTAL_BYTES
+				
+			FROM 
+				ATNI_PROD.CDR.GTT_SANDVINE_WIRLESS SW 
+				LEFT JOIN ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT E 
+				 		ON sw.SUBSCRIBER_ID = E.EXTERNAL_ID AND date(E.EXTRACT_FILE_DATE) = date(CURRENT_DATE()) AND E.IS_CURRENT  =1 
+			WHERE date(sw.RECORD_TIMESTAMP) >= ADD_MONTHS(current_date, -1)
+			 AND  E.INACTIVE_DATE IS NULL
+			 AND E.EXTERNAL_ID_TYPE = 1
+			GROUP BY 
+				1, 2,3
+		    UNION 
+		    
+		    SELECT 
+		    	DISTINCT 
+			  concat('592',A.MSIDN) AS SUBSCRIBER_ID,
+			  E.ACCOUNT_NO, 
+			  date(A.DATE_PERIOD) DATE_PERIOD,
+			  sum(A.TOTAL_RECEIVED_BYTES) RECEIVED_BYTES,
+			  sum(A.TOTAL_TRANSMITTED_BYTES) TRANSMITTED_BYTES,
+			  sum(A.TOTAL_BYTES) TOTAL_BYTES
+			 FROM
+				CDR.GTT_SANDVINE_WIRELINE A 
+				LEFT JOIN ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT E 
+				 		ON concat('592', A.MSIDN) = E.EXTERNAL_ID AND date(E.EXTRACT_FILE_DATE) = date(CURRENT_DATE()) AND E.IS_CURRENT  =1 
+			WHERE 
+				date(A.DATE_PERIOD) >= ADD_MONTHS(current_date, -1)
+				AND  E.INACTIVE_DATE IS NULL
+			 AND A.MSIDN NOT LIKE 'PUB%'
+			 AND E.EXTERNAL_ID_TYPE = 37
+			GROUP BY 1,2,3
+		
+		),
+		RAA_USAGE_RECORDS(DATESTART, EXTERNAL_ID, ACCOUNT_NO, RAWDURATION_IN_OUT, RAWDURATION_OUT, BILLABLEDURATION_IN_OUT, BILLABLEDURATION_OUT, RAWKB_IN_OUT,RAWKB_OUT, BILLABLEKB_IN_OUT, BILLABLEKB_OUT )
+			AS 
+			(
+				SELECT 
+				   DISTINCT 
+				   DATESTART,
+				   EXTERNAL_ID,
+				   ACCOUNT_NO,
+				   --SUBSCR_NO,
+				   sum(RAWDURATION) RAWDURATION_IN_OUT, 
+				   sum(CASE WHEN TRAFFICDIRECTIONCODE != 39 THEN RAWDURATION END) RAWDURATION_OUT,
+				   sum(BILLABLEDURATION) BILLABLEDURATION_IN_OUT,
+				   sum(CASE WHEN TRAFFICDIRECTIONCODE != 39 THEN BILLABLEDURATION END) BILLABLEDURATION_OUT,
+				   sum(RAWKB) RAWKB_IN_OUT, 
+				   sum(CASE WHEN TRAFFICDIRECTIONCODE != 39 THEN RAWKB END) RAWKB_OUT,
+				   sum(BILLABLEKB) BILLABLEKB_IN_OUT,
+				   sum(CASE WHEN TRAFFICDIRECTIONCODE != 39 THEN BILLABLEKB END) BILLABLEKB_OUT
+				FROM 
+					ATNI_PROD.GTT_REPORTING.SV_GTT_RAA_USAGE_DETAIL
+				WHERE 
+					date(DATESTART) >= ADD_MONTHS(CURRENT_date, -1)
+				GROUP BY 1,2,3
+			
+			),
+			
+	   FIBRE_VOICE_RECORDS( 
+	   					ACCOUNT_NO,
+	   					EXTERNAL_ID,
+	   					cust_type, 
+	   					TRANS_DT,
+	   					fibre_voice,
+	   					num_calls,
+	   					Free_Fibre_to_Fibre,
+	   					Free_Fibre_to_landline,
+	   					metered_minutes,
+	   					Free_Fibre_to_International,
+	   					Fibre_to_Fibre,
+	   					Fibre_to_landline,
+	   					Fibre_to_gtt_mobile,
+	   					Fibre_to_digicel_mobile,
+	   					Fibre_other,
+	   					metered_revenue,
+	   					Fibre_to_International_revenue,
+	   					Fibre_to_Fibre_revenue,
+	   					Fibre_to_landline_revenue,
+	   					Fibre_to_gtt_mobile_revenue,
+	   					Fibre_to_digicel_mobile_revenue,
+	   					Fibre_other_revenue
+	   				) AS 
+	   	(
+	   		SELECT
+				distinct
+			    CD.ACCOUNT_NO,
+			    CD.EXTERNAL_ID,
+			    acv.DISPLAY_VALUE cust_type, 
+			    date(CD.TRANS_DT) TRANS_DT,
+			    --listagg( DISTINCT O.DISPLAY_VALUE, ', ') offer_list,
+			    CONTAINS(listagg( DISTINCT O.DISPLAY_VALUE, ', '),'Plus') fibre_voice,
+			    count(1) num_calls,
+			    round(sum(CASE WHEN AGM.AUT_GROUP_ID=51 AND CD.AMOUNT_PREPAID > 0   THEN CD.PRIMARY_UNITS/60 ELSE 0 END),2) Free_Fibre_to_Fibre,
+			    round(sum(CASE WHEN AGM.AUT_GROUP_ID=50 AND CD.AMOUNT_PREPAID > 0  THEN CD.PRIMARY_UNITS/60 ELSE 0 END),2) Free_Fibre_to_landline,
+			    round(sum(CD.PRIMARY_UNITS/60),2) AS metered_minutes,
+			    round(sum(CASE WHEN AGM.AUT_GROUP_ID=47 AND CD.AMOUNT_PREPAID > 0  THEN CD.PRIMARY_UNITS/60 ELSE 0 END),2) Free_Fibre_to_International,
+			    round(sum(CASE WHEN AGM.AUT_GROUP_ID=51 AND CD.AMOUNT_POSTPAID > 0 THEN CD.PRIMARY_UNITS/60 ELSE 0 END),2) Fibre_to_Fibre,
+			    round(sum(CASE WHEN AGM.AUT_GROUP_ID=50 AND CD.AMOUNT_POSTPAID > 0 THEN CD.PRIMARY_UNITS/60 ELSE 0 END),2) Fibre_to_landline,
+			    round(sum(CASE WHEN AGM.AUT_GROUP_ID=48 AND CD.AMOUNT_POSTPAID > 0 THEN CD.PRIMARY_UNITS/60 ELSE 0 END),2) Fibre_to_gtt_mobile,
+			    round(sum(CASE WHEN AGM.AUT_GROUP_ID=49 AND CD.AMOUNT_POSTPAID > 0 THEN CD.PRIMARY_UNITS/60 ELSE 0 END),2) Fibre_to_digicel_mobile,
+			    round(sum(CASE WHEN AGM.AUT_GROUP_ID NOT IN (47,48,49,50,51) THEN CD.PRIMARY_UNITS/60 ELSE 0 END),2) Fibre_other,
+			    round(sum(CD.AMOUNT / 100),2) AS metered_revenue,
+			    round(sum(CASE WHEN AGM.AUT_GROUP_ID=47 THEN CD.AMOUNT_POSTPAID / 100 ELSE 0 END),2) Fibre_to_International_revenue,
+			    round(sum(CASE WHEN AGM.AUT_GROUP_ID=51 THEN CD.AMOUNT_POSTPAID / 100 ELSE 0 END),2) Fibre_to_Fibre_revenue,
+			    round(sum(CASE WHEN AGM.AUT_GROUP_ID=50 THEN CD.AMOUNT_POSTPAID / 100 ELSE 0 END),2) Fibre_to_landline_revenue,
+			    round(sum(CASE WHEN AGM.AUT_GROUP_ID=48 THEN CD.AMOUNT_POSTPAID / 100 ELSE 0 END),2) Fibre_to_gtt_mobile_revenue,
+			    round(sum(CASE WHEN AGM.AUT_GROUP_ID=49 THEN CD.AMOUNT_POSTPAID / 100 ELSE 0 END),2) Fibre_to_digicel_mobile_revenue,
+			    round(sum(CASE WHEN AGM.AUT_GROUP_ID NOT IN (47,48,49,50,51) THEN CD.AMOUNT / 100 ELSE 0 END),2) Fibre_other_revenue
+			    
+			
+			FROM ATNI_PROD.GTT_REPORTING.CDR_DATA CD
+			    JOIN ATNI_PROD.GTT_REPORTING.AUT_FINAL_VALUES AFV
+			    ON AFV.AUT_ID = CD.AUT_ID
+			    AND AFV.RESELLER_VERSION_ID = (SELECT MAX(RESELLER_VERSION_ID) FROM ATNI_PROD.GTT_REPORTING.AUT_FINAL_VALUES)
+			    LEFT JOIN ATNI_PROD.GTT_REPORTING.AUT_GROUP_MAP AGM
+			        ON AGM.AUT_ID = CD.AUT_ID
+			        AND AGM.RESELLER_VERSION_ID = (SELECT MAX(RESELLER_VERSION_ID) FROM ATNI_PROD.GTT_REPORTING.AUT_GROUP_MAP)
+			   LEFT JOIN ATNI_PROD.GTT_REPORTING.CMF_EXTRACT c
+			   ON CD.ACCOUNT_NO = C.ACCOUNT_NO AND date(c.EXTRACT_FILE_DATE) = date(current_date)
+			   join ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES acv on c.account_category = acv.account_category and acv.SERVICE_VERSION_ID = (select max(SERVICE_VERSION_ID) from ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES)
+			   
+			   LEFT JOIN 
+			   	(SELECT distinct offer_id, ACCOUNT_NO, SUBSCR_NO,disconnect_reason, ACTIVE_DT,INACTIVE_DT FROM  ATNI_PROD.GTT_REPORTING.OFFER_INST WHERE  offer_id IN (
+													SELECT
+													try_TO_NUMERIC(REPLACE(PRODUCTCODE,'MP',''))
+													FROM
+													ATNI_PROD.SC_OUTPUT.DIMPRODUCT
+													WHERE
+													LEAFLEVELNAME='Internet'
+													AND SOURCESYSTEMID=1
+													AND PRODUCTCODE LIKE 'MP%'
+												)  )   ins
+			   ON ins.SUBSCR_NO = CD.SUBSCR_NO  AND ins.INACTIVE_DT IS null
+			   JOIN
+				 ATNI_PROD.GTT_REPORTING.OFFER_VALUES O ON ins.OFFER_ID=O.OFFER_ID AND O.RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM ATNI_PROD.GTT_REPORTING.OFFER_VALUES)
+			WHERE DATE(CD.TRANS_DT) BETWEEN date_trunc('month',dateadd('month', -1, current_date)) AND last_day(dateadd('month', -1, current_date))
+			AND CD.EXTERNAL_ID_TYPE = 37
+			AND CD.PRIMARY_UNITS > 0
+			AND AFV.DISPLAY_VALUE LIKE '%Voice_GPON%'
+			GROUP BY 1,2,3,4
+			ORDER BY 12,1,2,3
+	   	)
+		
+	
+				SELECT 
+				DISTINCT 
+				   --SR.D_MONTH --Month of the TRANSACTIONS
+				   SR.BID -- Phone number attached TO the service
+				   ,ACCOUNTNUMBER -- ACCOUNT number OF service
+				   ,E.SUBSCR_NO
+					,SR.CUSTOMERTYPE -- Account type description
+					,SR.LINE_OF_SERVICE -- Top level service category
+					,SR.SUBLINE_OF_SERVICE -- Mid level service category
+					,SR.SUBLINE_OF_SERVICE_SEGMENT -- Low level service category
+					,SR.DATESTART usage_date
+					,CU.Voice_usage_count Voice_usage_count -- Count of subscribers using voice in the month
+					--, sum(SR.END_ACTIVE) END_ACTIVE -- Count of active subscribers in the MONTH.
+					--, sum(SR.BILLED_COUNT) BILLED_COUNT --  Count of subscribers billed in the month
+					,CU.OUTGOING_SEC OUTGOING_SEC
+					,CU.INCOMING_SEC INCOMING_SEC
+					, CU.DURATION_SEC Voice_usage_in_and_out -- Total incoming and outgoing calls for subscribers in the MONTH
+					,CU.out_count
+					,CU.IN_COUNT
+					,CU.total_count
+					,DUR.RECEIVED_BYTES
+					,DUR.TRANSMITTED_BYTES
+					,DUR.TOTAL_BYTES
+					,RAAU.RAWDURATION_IN_OUT 
+					,RAAU.RAWDURATION_OUT 
+					,RAAU.BILLABLEDURATION_OUT 
+					,RAAU.RAWKB_IN_OUT
+					,RAAU.RAWKB_OUT
+					,RAAU.BILLABLEKB_IN_OUT 
+					,RAAU.BILLABLEKB_OUT
+					,FV.num_calls Fibre_calls
+					,FV.Free_Fibre_to_Fibre
+					,FV.Free_Fibre_to_landline
+					,FV.metered_minutes Fibre_metered_minute
+					,FV.Fibre_to_Fibre
+					,FV.Fibre_to_landline
+					,FV.Fibre_to_gtt_mobile
+					,FV.Fibre_to_digicel_mobile
+					,FV.Fibre_other
+					,FV.metered_revenue Fibre_metered_revenue
+					,FV.Fibre_to_International_revenue
+					,FV.Fibre_to_Fibre_revenue
+					,FV.Fibre_to_landline_revenue
+					,FV.Fibre_to_gtt_mobile_revenue
+					,FV.Fibre_to_digicel_mobile_revenue
+					,FV.Fibre_other_revenue
+					,FV.Free_Fibre_to_International
+				
+				FROM 
+				
+				 (SELECT 
+					usage_date
+					,BID
+					,ACCOUNT_NO
+					,Voice_usage_count
+					,DURATION_SEC
+					,OUTGOING_SEC
+					,INCOMING_SEC
+					,out_count
+					,IN_COUNT
+					,total_count
+						FROM 
+							(
+								SELECT 
+									NVL(A.usage_date ,B.usage_date) usage_date 
+									,NVL(A.BID, B.BID) BID-- Service phone number
+									,NVL(A.ACCOUNT_NO, B.ACCOUNT_NO) ACCOUNT_NO
+									,1 Voice_usage_count -- count OF voice USAGE subscriber per month
+									,NVL(A.DURATION_SEC,0) + NVL(B.DURATION_SEC,0) DURATION_SEC -- total incoming AND outgoing calls
+									,NVL(A.outgoing,0) + NVL(B.outgoing,0) OUTGOING_SEC -- total outgoing calls
+									,NVL(A.incoming, 0) + NVL(B.incoming,0) INCOMING_SEC -- total incoming calls
+									,NVL(A.out_count, 0) + NVL(B.out_count, 0) out_count
+									,NVL(A.IN_COUNT, 0) + NVL(B.IN_COUNT, 0) IN_COUNT
+									,NVL(A.total_count, 0) + NVL(B.total_count, 0) total_count
+								FROM 
+									GEN_RECORDS A
+								FULL JOIN AIRSPAN_RECORDS B
+								ON A.BID = B.BID AND A.ACCOUNT_NO = B.ACCOUNT_NO AND A.usage_date = b.usage_date
+								
+								
+								
+							) ALL_ACTIVITIES
+						ORDER BY 1
+				) CU
+				RIGHT JOIN (
+					SELECT 
+					   --to_char(SC.DATESTART_MONTH_ENDING, 'YYYY-MM') AS D_MONTH
+					   SC.DATESTART
+					   ,SC.CUSTOMERTYPE
+					   ,SC.BID
+					   ,SC.ACCOUNTNUMBER
+					   ,SC.LINE_OF_SERVICE
+					   ,SC.SUBLINE_OF_SERVICE
+					   ,SC.SUBLINE_OF_SERVICE_SEGMENT
+						, count(DISTINCT BR.ACCOUNTNUMBER) BILLED_COUNT
+					FROM 
+						SCORECARD_RECORDS SC
+						LEFT JOIN ( 
+								SELECT 
+									DISTINCT
+									date(DATESTART) DATESTART,
+									--date_trunc('MONTH', ADD_MONTHS(DATESTART_MONTH_ENDING, -1)) DATESTART_MONTH_ENDING,
+									nvl(BID,'')BID  ,
+									ACCOUNTNUMBER 
+								FROM  
+									ATNI_DEV.GTT_REPORTING.SV_GTT_BILLED_REVENUE
+								WHERE 
+									--date(DATESTART_MONTH_ENDING) >= ADD_MONTHS(CURRENT_date, -14)
+									date(DATESTART) >= ADD_MONTHS(CURRENT_date, -1)
+								) BR 
+					ON SC.ACCOUNTNUMBER =  BR.ACCOUNTNUMBER AND SC.BID = BR.BID AND date(SC.DATESTART) = date(BR.DATESTART)
+				
+			GROUP BY 1,2,3,4,5,6,7		
+				)			
+				SR  
+				ON SR.BID = CU.BID AND SR.DATESTART = CU.usage_date AND SR.ACCOUNTNUMBER = CU.ACCOUNT_NO
+			LEFT JOIN ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT E 
+					on SR.BID = E.EXTERNAL_ID AND SR.ACCOUNTNUMBER =  E.ACCOUNT_NO  AND date(E.EXTRACT_FILE_DATE) = date(CURRENT_DATE()) AND E.IS_CURRENT = 1
+			LEFT JOIN DATA_USAGE_RECORDS DUR 
+				ON SR.BID = DUR.SUBSCRIBER_ID AND SR.DATESTART = DUR.DATE_PERIOD AND SR.ACCOUNTNUMBER = DUR.ACCOUNT_NO
+			LEFT JOIN RAA_USAGE_RECORDS RAAU 
+				ON SR.BID = RAAU.EXTERNAL_ID AND SR.DATESTART = RAAU.DATESTART AND SR.ACCOUNTNUMBER = RAAU.ACCOUNT_NO
+			LEFT JOIN FIBRE_VOICE_RECORDS FV 
+				ON SR.BID = FV.EXTERNAL_ID AND SR.DATESTART = FV.TRANS_DT AND SR.ACCOUNTNUMBER = FV.ACCOUNT_NO
+			WHERE 
+				SR.SUBLINE_OF_SERVICE_SEGMENT <> 'DSL'
+
+			ORDER BY 1,2,3

@@ -1,0 +1,474 @@
+create table CEO_DASH_BASE as
+SELECT
+  extract(year from TRANS_DT) YR,
+  date_trunc('week', TRANS_DT ) AS Week,
+  cast(extract(year from TRANS_DT) as char(4)) ||'-'|| cast(extract(week from TRANS_DT) as char(2)) as Period
+  
+FROM CDR_DATA
+WHERE '20190101' <= TRANS_DT
+  AND TRANS_DT < current_date --'20200201'
+GROUP BY 1--,2,3--date_trunc('week', TRANS_DT ) 
+ORDER BY 1;
+
+-----------------------------------------------------------------------
+
+create table CEO_DASH_ACTIVE_DSL as
+select   
+  --extract(year from c.EXTRACT_FILE_DATE) YR,
+  --date_trunc('week', c.EXTRACT_FILE_DATE ) AS Week,
+  --cast(extract(year from c.EXTRACT_FILE_DATE) as char(4)) ||'-'|| cast(extract(week from c.EXTRACT_FILE_DATE) as char(2)) as Period,
+  c.EXTRACT_FILE_DATE,
+  COUNT(1) AS Active_DSL
+from 
+  ADMIN.CMF_EXTRACT c join
+  ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO --and c.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd')
+where
+  eip.IS_CURRENT = 1 and 
+  eip.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd') and
+  eip.EXTERNAL_ID_TYPE in (11) and
+  c.ACCOUNT_CATEGORY <> 12 and
+  -- A.OFFER_TYPE in (2) and
+  --(c.EXTRACT_FILE_DATE) ='20180930' and
+  c.EXTRACT_FILE_DATE in (select week from CEO_DASH_BASE) and
+   
+
+   c.DATE_INACTIVE is  null
+   GROUP BY 1--,2,3--date_trunc('week', TRANS_DT ) 
+ORDER BY 1;
+
+----------------------------------------------------------
+
+--Get the last week's recharges starting with the date
+
+create table CEO_DASH_TOP_UP as
+SELECT
+
+  extract(year from r.RECHARGE_DATE_TIME) YR,
+  date_trunc('week', r.RECHARGE_DATE_TIME ) AS Week,
+  cast(extract(year from r.RECHARGE_DATE_TIME) as char(4)) ||'-'|| cast(extract(week from r.RECHARGE_DATE_TIME) as char(2)) as Period,
+   ROUND(abs(sum(amount/100))) "week_total"
+FROM
+    RECHARGE_HISTORY r 
+    JOIN 
+        RECHARGE_HISTORY_BALANCE b 
+    ON 
+        r.RECHARGE_ID = b.RECHARGE_ID 
+        AND r.RECHARGE_ID2 = b.RECHARGE_ID2
+WHERE 
+--date(r.RECHARGE_DATE_TIME) in ()
+    '20190101' <= date(r.RECHARGE_DATE_TIME)
+    AND date(r.RECHARGE_DATE_TIME) < current_date - 1
+
+    AND b.BALANCE_ID = 89
+    and amount <> 0
+    AND (upper(R.Recharge_Commment )  not like '%INSWITCH%' or R.Recharge_Commment  is null)
+    AND r.subscr_no NOT in(SELECT SUBSCR_NO FROM ADMIN.EXTERNAL_ID_EQUIP_MAP WHERE EXTERNAL_ID_type=1 AND EXTERNAL_ID LIKE '592888%')
+group by 1,2,3
+      
+order by 2
+
+-------------------------------------------------------
+create table CEO_DASH_OUT_DSL as
+SELECT
+  extract(year from DUMP_TS) YR,
+  date(DUMP_TS ) AS Week,
+  cast(extract(year from DUMP_TS) as char(4)) ||'-'|| cast(extract(week from DUMP_TS) as char(2)) as Period,
+  COUNT(1) AS OUT_DSL
+  
+FROM 
+  GTT_REPORTING.ADMIN.TROUBLE_TICKET_STATS
+WHERE 
+	TKT_STS = 'OPEN' AND
+	SERV_CAT = 'D S L' AND
+	date(DUMP_TS)  = date(current_date) 
+
+GROUP BY 1,2,3--date_trunc('week', TRANS_DT ) 
+ORDER BY 1;
+
+----------------------------------------
+create table CEO_DASH_OUT_DSL as
+SELECT
+  extract(year from DUMP_TS) YR,
+  date(DUMP_TS ) AS Week,
+  cast(extract(year from DUMP_TS) as char(4)) ||'-'|| cast(extract(week from DUMP_TS) as char(2)) as Period,
+  COUNT(1) AS OUT_DSL
+  
+FROM 
+  GTT_REPORTING.ADMIN.TROUBLE_TICKET_STATS
+WHERE 
+	TKT_STS = 'OPEN' AND
+	SERV_CAT = 'D S L' AND
+	date(DUMP_TS)  = date(current_date) 
+
+GROUP BY 1,2,3--date_trunc('week', TRANS_DT ) 
+ORDER BY 1;
+
+-----------------------------------------------
+create table CEO_DASH_ACTIVE_GPON as
+SELECT
+  extract(year from c.EXTRACT_FILE_DATE) YR,
+  date_trunc('week', c.EXTRACT_FILE_DATE ) AS Week,
+  cast(extract(year from c.EXTRACT_FILE_DATE) as char(4)) ||'-'|| cast(extract(week from c.EXTRACT_FILE_DATE) as char(2)) as Period,
+  COUNT(1) AS GPON_ACTIVE
+
+
+FROM
+		OFFER_INST A
+		INNER JOIN
+		OFFER_VALUES O ON A.OFFER_ID=O.OFFER_ID AND RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM OFFER_VALUES)
+		LEFT JOIN
+		 ADMIN.CMF_EXTRACT C ON A.ACCOUNT_NO = C.ACCOUNT_NO
+	WHERE
+		DATE(A.EFFECTIVE_DT)<=CURRENT_DATE 
+        AND DATE(A.EXPIRY_DT)>CURRENT_DATE
+		AND A.INACTIVE_DT IS NULL 
+		AND A.OFFER_TYPE in (2,3) -- PRIMARY OFFER
+		AND A.ACCOUNT_NO <> 0
+		AND A.OFFER_ID IN( 
+							SELECT
+							REPLACE(PRODUCTSCODE,'MP','')
+							FROM
+							SAA_PROD..DIMPRODUCTS
+							WHERE
+							GEN03LEVELNAME LIKE '%GPON Data%'
+							AND PRODUCTSCODE NOT LIKE 'RC%'
+		                 )
+		AND A.SUBSCR_NO IN( SELECT 
+						 SUBSCR_NO
+						 FROM 
+						 EXTERNAL_ID_EQUIP_MAP
+						 WHERE
+						 EXTERNAL_ID_TYPE IN (37, 39) --BLAZE
+						 AND DATE(EFFECTIVE_DT)<=CURRENT_DATE 
+						 AND DATE(EXPIRY_DT)>CURRENT_DATE
+						 AND INACTIVE_DATE IS NULL
+						 ) 	
+        AND  c.EXTRACT_FILE_DATE in (select week from CEO_DASH_BASE)
+		
+GROUP BY 1,2,3--date_trunc('week', TRANS_DT ) 
+ORDER BY 2; --date_trunc('week', EXTRACT_FILE_DATE );
+
+--------------------------------------------------------------
+create table CEO_DASH_ACTIVE_LANDLINE as
+select distinct  
+  c.EXTRACT_FILE_DATE,
+  COUNT(1) AS Active_LAND_LINE
+from 
+  ADMIN.CMF_EXTRACT c join
+  ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO --and c.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd')
+  join
+  ADMIN.OFFER_INST A ON A.SUBSCR_NO = eip.SUBSCR_NO
+where
+  eip.IS_CURRENT = 1 and 
+  eip.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd') and
+  eip.EXTERNAL_ID_TYPE in (9) and
+  A.OFFER_TYPE =2 and 
+  A.OFFER_ID NOT IN('2360','10458') and
+  A.INACTIVE_DT is null and 
+  eip.EXTERNAL_ID like '592%' and
+  --(c.EXTRACT_FILE_DATE) ='20180930' and
+  c.EXTRACT_FILE_DATE in (select week from CEO_DASH_BASE) and
+
+   c.DATE_INACTIVE is  null
+   
+GROUP BY 1--,2,3--date_trunc('week', TRANS_DT ) 
+ORDER BY 1;
+
+------------------------------------------------------
+create table CEO_DASH_ACTIVE_POSTPAID_MOBILE as
+select distinct
+
+  c.EXTRACT_FILE_DATE,
+  COUNT(1) AS Active_LAND_LINE
+from 
+  ADMIN.CMF_EXTRACT c join
+  ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO --and c.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd')
+  join  ADMIN.ACCOUNT_SUBSCRIBER_EXTRACT ase on c.ACCOUNT_NO = ase.ACCOUNT_NO and ase.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd')
+
+where
+  eip.IS_CURRENT = 1 and 
+  eip.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd') and
+  eip.EXTERNAL_ID_TYPE in (1) and
+  --(c.EXTRACT_FILE_DATE) ='20180930' and
+  (ase.payment_mode1 !=1 or ase.payment_mode1 is null ) and
+  c.EXTRACT_FILE_DATE in (select week from CEO_DASH_BASE) and
+
+   c.DATE_INACTIVE is  null
+   
+GROUP BY 1--,2,3--date_trunc('week', TRANS_DT ) 
+ORDER BY 1;
+
+----------------------------------------------------------------------
+create table CEO_DASH_ACTIVE_POSTPAID_MOBILE_EBILL 
+as
+select distinct
+
+  c.EXTRACT_FILE_DATE,
+  COUNT(1) AS Active_POSTPAID
+from 
+  ADMIN.CMF_EXTRACT c join
+  ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO --and c.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd')
+  join  ADMIN.ACCOUNT_SUBSCRIBER_EXTRACT ase on c.ACCOUNT_NO = ase.ACCOUNT_NO and ase.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd')
+
+where
+  eip.IS_CURRENT = 1 and 
+  eip.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd') and
+  eip.EXTERNAL_ID_TYPE in (1) and
+  --(c.EXTRACT_FILE_DATE) ='20180930' and
+  (ase.payment_mode1 !=1 or ase.payment_mode1 is null ) and
+  c.EXTRACT_FILE_DATE in (select week from CEO_DASH_BASE) and
+  c.BILL_DISP_METH in (5,6) and
+
+   c.DATE_INACTIVE is  null
+   
+GROUP BY 1--,2,3--date_trunc('week', TRANS_DT ) 
+ORDER BY 1;
+----------------------------------------
+create table CEO_DASH_ACTIVE_LANDLINE_EBILL as
+select distinct  
+  c.EXTRACT_FILE_DATE,
+  COUNT(1) AS Active_LAND_LINE
+from 
+  ADMIN.CMF_EXTRACT c join
+  ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO --and c.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd')
+  join
+  ADMIN.OFFER_INST A ON A.SUBSCR_NO = eip.SUBSCR_NO
+where
+  eip.IS_CURRENT = 1 and 
+  eip.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd') and
+  eip.EXTERNAL_ID_TYPE in (9) and
+  A.OFFER_TYPE =2 and 
+  A.OFFER_ID NOT IN('2360','10458') and
+  A.INACTIVE_DT is null and 
+  eip.EXTERNAL_ID like '592%' and
+  --(c.EXTRACT_FILE_DATE) ='20180930' and
+  c.EXTRACT_FILE_DATE in (select week from CEO_DASH_BASE) and
+  c.BILL_DISP_METH in (5,6) and
+   c.DATE_INACTIVE is  null
+   
+GROUP BY 1--,2,3--date_trunc('week', TRANS_DT ) 
+ORDER BY 1;
+
+----------------------------------------
+create table CEO_DASH_ACTIVE_GPON_EBILL_EBILL as
+SELECT
+  extract(year from c.EXTRACT_FILE_DATE) YR,
+  date_trunc('week', c.EXTRACT_FILE_DATE ) AS Week,
+  cast(extract(year from c.EXTRACT_FILE_DATE) as char(4)) ||'-'|| cast(extract(week from c.EXTRACT_FILE_DATE) as char(2)) as Period,
+  COUNT(1) AS GPON_ACTIVE
+
+
+FROM
+		OFFER_INST A
+		INNER JOIN
+		OFFER_VALUES O ON A.OFFER_ID=O.OFFER_ID AND RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM OFFER_VALUES)
+		LEFT JOIN
+		 ADMIN.CMF_EXTRACT C ON A.ACCOUNT_NO = C.ACCOUNT_NO
+	WHERE
+		DATE(A.EFFECTIVE_DT)<=CURRENT_DATE 
+        AND DATE(A.EXPIRY_DT)>CURRENT_DATE
+		AND A.INACTIVE_DT IS NULL 
+		AND A.OFFER_TYPE in (2,3) -- PRIMARY OFFER
+		AND A.ACCOUNT_NO <> 0
+		AND A.OFFER_ID IN( 
+							SELECT
+							REPLACE(PRODUCTSCODE,'MP','')
+							FROM
+							SAA_PROD..DIMPRODUCTS
+							WHERE
+							GEN03LEVELNAME LIKE '%GPON Data%'
+							AND PRODUCTSCODE NOT LIKE 'RC%'
+		                 )
+		AND A.SUBSCR_NO IN( SELECT 
+						 SUBSCR_NO
+						 FROM 
+						 EXTERNAL_ID_EQUIP_MAP
+						 WHERE
+						 EXTERNAL_ID_TYPE IN (37, 39) --BLAZE
+						 AND DATE(EFFECTIVE_DT)<=CURRENT_DATE 
+						 AND DATE(EXPIRY_DT)>CURRENT_DATE
+						 AND INACTIVE_DATE IS NULL
+						 ) 	
+		AND c.BILL_DISP_METH in (5,6) 
+        AND  c.EXTRACT_FILE_DATE in (select week from CEO_DASH_BASE)
+		
+		
+GROUP BY 1,2,3--date_trunc('week', TRANS_DT ) 
+ORDER BY 2; --date_trunc('week', EXTRACT_FILE_DATE );
+
+---------------------------------------------------
+create table CEO_DASH_ACTIVE_DSL_EBILL as
+select   
+  --extract(year from c.EXTRACT_FILE_DATE) YR,
+  --date_trunc('week', c.EXTRACT_FILE_DATE ) AS Week,
+  --cast(extract(year from c.EXTRACT_FILE_DATE) as char(4)) ||'-'|| cast(extract(week from c.EXTRACT_FILE_DATE) as char(2)) as Period,
+  c.EXTRACT_FILE_DATE,
+  COUNT(1) AS Active_DSL
+from 
+  ADMIN.CMF_EXTRACT c join
+  ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO --and c.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd')
+where
+  eip.IS_CURRENT = 1 and 
+  eip.EXTRACT_FILE_DATE = to_char(current_date -1, 'yyyyMMdd') and
+  eip.EXTERNAL_ID_TYPE in (11) and
+  c.ACCOUNT_CATEGORY <> 12 and
+  -- A.OFFER_TYPE in (2) and
+  --(c.EXTRACT_FILE_DATE) ='20180930' and
+  c.EXTRACT_FILE_DATE in (select week from CEO_DASH_BASE) and
+  c.BILL_DISP_METH in (5,6) AND
+
+   c.DATE_INACTIVE is  null
+   GROUP BY 1--,2,3--date_trunc('week', TRANS_DT ) 
+ORDER BY 1;
+
+
+------------------------------------------------------
+--------------------------------------------------------------
+create table CEO_DASH_ALL_CHATS(
+chat_date timestamp,
+chats      INTEGER,
+missed_chats      INTEGER
+);
+
+select * from CEO_DASH_ALL_CHATS order by 1;
+
+create table CEO_DASH_ALL_CHATS_WKLY as
+select
+  CHAT_DATE,
+  sum(CHATS) as Total_chats
+ from 
+	CEO_DASH_ALL_CHATS
+where 
+	date(CHAT_DATE) between '20200701' and '20200707'
+group by
+    CHAT_DATE;
+	
+select * from CEO_DASH_ALL_CHATS_WKLY order by 1;
+	
+delete from CEO_DASH_ALL_CHATS_WKLY where chat_date = '20200726';
+-------------------------------------------------
+create table CEO_DASH_ALL_CHATS_TIME(
+chat_date timestamp,
+chat_hours      float
+);
+
+select * from CEO_DASH_ALL_CHATS_TIME order by 1;
+
+delete from CEO_DASH_ALL_CHATS_TIME where extract(month from CHAT_DATE) in (6,7) and extract(year from CHAT_DATE) = 2020 ;
+
+create table CEO_DASH_ALL_CHATS_TIME_WKLY as
+select
+	CHAT_DATE,
+	sum(chat_hours) chat_time_hrs
+from
+	CEO_DASH_ALL_CHATS_TIME
+where 
+	date(CHAT_DATE) between '20200701' and '20200707'
+group by
+    CHAT_DATE;
+	
+select * from CEO_DASH_ALL_CHATS_TIME_WKLY order by 1;
+
+delete from CEO_DASH_ALL_CHATS_TIME_WKLY where chat_date = '20200726';
+-----------------------------------------
+
+create table CEO_DASH_ALL_CHATS_WAITING_TIME(
+chat_date timestamp,
+entered_average      float,
+entered_count      float,
+entered_min      float,
+entered_max      float,
+left_average      float,
+left_count      float,
+left_min      float,
+left_max      float,
+queued_average      float,
+queued_count      float,
+queued_min      float,
+queued_max      float
+);
+
+select * from CEO_DASH_ALL_CHATS_WAITING_TIME order by 1;
+
+delete from CEO_DASH_ALL_CHATS_WAITING_TIME;
+
+create table CEO_DASH_ALL_CHATS_WAITING_TIME_WKLY as
+select
+	CHAT_DATE,
+	sum(entered_average + left_average + queued_average)/60 as time_in_queue_mins,
+	sum(left_count) as CC_abandonment
+
+from
+	CEO_DASH_ALL_CHATS_WAITING_TIME
+where 
+	date(CHAT_DATE) between '20200701' and '20200707'
+group by
+    CHAT_DATE;
+
+select * from CEO_DASH_ALL_CHATS_WAITING_TIME_WKLY order by 1;
+
+delete from CEO_DASH_ALL_CHATS_WAITING_TIME_WKLY where chat_date = '20200726';
+-------------------------------------------------
+create table CEO_DASH_ALL_CHATS_QUEUED(
+chat_date timestamp,
+entered_chat      float,
+left_queue      float,
+queued      float
+);
+
+select * from CEO_DASH_ALL_CHATS_QUEUED order by 1;
+
+delete from CEO_DASH_ALL_CHATS_QUEUED;
+
+-----------------------------------------
+create table CEO_DASH_ALL_CHATS_RANKING(
+chat_date timestamp,
+agent      CHARACTER VARYING(100),
+good      float,
+bad      float,
+score      float,
+total      float
+);
+
+select * from CEO_DASH_ALL_CHATS_RANKING order by 1;
+
+create table CEO_DASH_ALL_CHATS_RANKING_WKLY as
+select
+	CHAT_DATE, 
+	avg(SCORE ) chat_satisfaction
+from
+	CEO_DASH_ALL_CHATS_RANKING
+where
+	date(CHAT_DATE) between '20200701' and '20200707'
+group by
+    CHAT_DATE;
+
+select * from CEO_DASH_ALL_CHATS_RANKING_WKLY order by 1;
+
+delete from CEO_DASH_ALL_CHATS_RANKING_WKLY where chat_date = '20200726';
+
+-----------------------------------------
+
+select
+    '20200707' as FD,
+	sum(case when STORE_NAME = '004 Linden' then round(cast(TRANSACTIONS as float) / nullif(cast(TRAFFIC as float), 0),2) else 0 end) as LINDEN,
+	sum(case when STORE_NAME = '005 New Amsterdam' then round(cast(TRANSACTIONS as float) / nullif(cast(TRAFFIC as float), 0),2) else 0 end) as New_Amsterdam,
+	sum(case when STORE_NAME = '006 Beterverwagting' then round(cast(TRANSACTIONS as float) / nullif(cast(TRAFFIC as float), 0),2) else 0 end) as Beterverwagting,
+	sum(case when STORE_NAME = '007 55 Brickdam' then round(cast(TRANSACTIONS as float) / nullif(cast(TRAFFIC as float), 0),2) else 0 end) as Brickdam_55,
+	sum(case when STORE_NAME = '008 Fogartys' then round(cast(TRANSACTIONS as float) / nullif(cast(TRAFFIC as float), 0),2) else 0 end) as Fogartys,
+	sum(case when STORE_NAME = '011 Giftland' then round(cast(TRANSACTIONS as float) / nullif(cast(TRAFFIC as float), 0),2) else 0 end) as Giftland,
+	sum(case when STORE_NAME = '015 Camp & Robb Street' then round(cast(TRANSACTIONS as float) / nullif(cast(TRAFFIC as float), 0),2) else 0 end) as Camp_and_Robb,
+	sum(case when STORE_NAME = '017 New Amsterdam Trinity St' then round(cast(TRANSACTIONS as float) / nullif(cast(TRAFFIC as float), 0),2) else 0 end) as New_Amsterdam_Trinity,
+	sum(case when STORE_NAME = '018 Corriverton' then round(cast(TRANSACTIONS as float) / nullif(cast(TRAFFIC as float), 0),2) else 0 end) as Corriverton
+from(
+	select 
+		STORE_NAME,  
+		sum(TRANSACTIONS) as TRANSACTIONS ,
+		sum(TRAFFIC) TRAFFIC
+	from 
+		headcount_data
+	where
+	    date(HEADCOUNT_DATE) between '20200701'  and '20200707'
+	group by 1
+) sub
+group by 1

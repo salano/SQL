@@ -1,0 +1,30 @@
+SELECT 
+	from_unixtime(cps_payment_log_cube.request_date) as `Request Date`,
+    from_unixtime(cps_payment_log_cube.response_date) as `Response Date`,
+    CONCAT(cps_payment_log_cube.series,cps_payment_log_cube.fol_number) as `Series Folio`,
+    csy_mbrc_cube.mbrc_name as `Branch`,
+    cps_payment_log_cube.clerk as `Agent`,
+    cps_payment_log_cube.transaction_type as `Transaction Type`,
+    cps_payment_log_cube.amount as `Amount`,
+    cps_payment_log_cube.mms_tran_id as `Transaction ID`,
+    cps_payment_log_cube.transaction_status as `Sataus`,
+    cps_payment_log_cube.response_code as `Response Code`,
+    cps_payment_log_cube.response_text as `Response Text`,
+    IF(tran_header_cube.void_status = 'V', 'VOID', 'APPLIED') AS `Void Status`
+FROM cps_payment_log_cube
+JOIN dealers on dealers.dealer_tag = cps_payment_log_cube.dealer_tag
+JOIN csy_mbrc_cube on csy_mbrc_cube.mbrc_branch = cps_payment_log_cube.branch AND csy_mbrc_cube.dealer_tag = cps_payment_log_cube.dealer_tag
+JOIN csy_acl_cube on csy_acl_cube.clerk =  cps_payment_log_cube.clerk AND csy_acl_cube.dealer_tag =  cps_payment_log_cube.dealer_tag
+JOIN tran_header_cube on tran_header_cube.series = cps_payment_log_cube.series AND tran_header_cube.folio_number = cps_payment_log_cube.fol_number AND tran_header_cube.dealer_tag = cps_payment_log_cube.dealer_tag
+WHERE 
+    CASE $P{transaction_type} 
+        WHEN 2 THEN cps_payment_log_cube.transaction_type IN('PrePaidTopUp')
+        WHEN 3 THEN cps_payment_log_cube.transaction_type IN( 'postpaidPostAccountPaym')
+        ELSE  cps_payment_log_cube.transaction_type IN( 'postpaidPostAccountPaym','PrePaidTopUp')
+    END  
+    AND tran_header_cube.tran_date BETWEEN IF($P{time_tag} = 'int', UNIX_TIMESTAMP(CASE $P!{Date_Range_List} WHEN 0 THEN $P{frm_date_time} WHEN 1 THEN CURDATE() WHEN 2 THEN (CURDATE() - INTERVAL 1 DAY) WHEN 3 THEN (CURDATE() - INTERVAL 7 DAY) WHEN 4 THEN (CURDATE() - INTERVAL DAYOFMONTH(CURDATE()) - 1 DAY) WHEN 5 THEN (CURDATE() - INTERVAL 1 MONTH - INTERVAL DAYOFMONTH(CURDATE()) -1 DAY) WHEN 6 THEN DATE_FORMAT(NOW() ,'%Y-%m-01 00:00:00') WHEN 7 THEN DATE_FORMAT(NOW() ,'%Y-%m-10 00:00:00') WHEN 8 THEN DATE_FORMAT(NOW() ,'%Y-%m-20 00:00:00') END), (CASE $P!{Date_Range_List} WHEN 0 THEN $P{frm_date_time} WHEN 1 THEN CURDATE() WHEN 2 THEN (CURDATE() - INTERVAL 1 DAY) WHEN 3 THEN (CURDATE() - INTERVAL 7 DAY) WHEN 4 THEN (CURDATE() - INTERVAL DAYOFMONTH(CURDATE()) - 1 DAY) WHEN 5 THEN (CURDATE() - INTERVAL 1 MONTH - INTERVAL DAYOFMONTH(CURDATE()) -1 DAY) WHEN 6 THEN DATE_FORMAT(NOW() ,'%Y-%m-01 00:00:00') WHEN 7 THEN DATE_FORMAT(NOW() ,'%Y-%m-10 00:00:00') WHEN 8 THEN DATE_FORMAT(NOW() ,'%Y-%m-20 00:00:00') END)) AND IF($P{time_tag} = 'int', UNIX_TIMESTAMP(CASE $P!{Date_Range_List} WHEN 0 THEN $P{to_date_time} WHEN 1 THEN (CURDATE() + INTERVAL 1 DAY) WHEN 2 THEN CURDATE() WHEN 3 THEN CURDATE() WHEN 4 THEN (CURDATE() + INTERVAL 1 DAY) WHEN 5 THEN CURDATE() - INTERVAL DAYOFMONTH(CURDATE()) - 1 DAY WHEN 6 THEN DATE_FORMAT(NOW() ,'%Y-%m-01 23:59:59') WHEN 7 THEN DATE_FORMAT(NOW() ,'%Y-%m-10 23:59:59') WHEN 8 THEN DATE_FORMAT(NOW() ,'%Y-%m-20 23:59:59') END), (CASE $P!{Date_Range_List} WHEN 0 THEN $P{to_date_time} WHEN 1 THEN (CURDATE() + INTERVAL 1 DAY) WHEN 2 THEN CURDATE() WHEN 3 THEN CURDATE() WHEN 4 THEN (CURDATE() + INTERVAL 1 DAY) WHEN 5 THEN CURDATE() - INTERVAL DAYOFMONTH(CURDATE()) - 1 DAY WHEN 6 THEN DATE_FORMAT(NOW() ,'%Y-%m-01 23:59:59') WHEN 7 THEN DATE_FORMAT(NOW() ,'%Y-%m-10 23:59:59') WHEN 8 THEN DATE_FORMAT(NOW() ,'%Y-%m-20 23:59:59') END))
+    AND $X{IN, csy_mbrc_cube.cube_id, branch_id}
+    AND IF($X{IN, 'XXXXXX', bset_id}, 1=1, IF((SELECT COUNT(bset_id) FROM cin_bsit_cube JOIN dealers ON dealers.dealer_tag = cin_bsit_cube.dealer_tag WHERE $X{IN, dealers.dealer_tag, dealer_tag}) > 0, csy_mbrc_cube.cube_id IN (SELECT DISTINCT csy_mbrc_cube.cube_id FROM cin_bsit_cube JOIN csy_mbrc_cube ON cin_bsit_cube.dealer_tag = csy_mbrc_cube.dealer_tag AND cin_bsit_cube.branch = csy_mbrc_cube.mbrc_branch WHERE $X{IN, bset_id, bset_id} AND cin_bsit_cube.dealer_tag = dealers.dealer_tag), true))
+    AND $X{IN, csy_acl_cube.clerk, clerk}
+    AND IF($P{SeriesFolio} = '', true, CONCAT(cps_payment_log_cube.series,cps_payment_log_cube.fol_number) = $P{SeriesFolio})
+    AND IF($P{mms_tran_id} = '', true, cps_payment_log_cube.mms_tran_id = $P{mms_tran_id})

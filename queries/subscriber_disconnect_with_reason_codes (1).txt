@@ -1,0 +1,36 @@
+drop table tmp01disc01;
+create table tmp01disc01 as select /*+ parallel(a ,8)*/ account_no, external_id as phone, external_id_type, subscr_no, decode(external_id_type,1,'Mobile',9,'Wireline',11,'DSL',27,'Lesaed Line',37,'GPON',39,'GPON') as srvcat , inactive_date from external_id_equip_map@main1 a
+where external_id_type in(1,9,11,27,37,39) and inventory_id is not null 
+and inactive_date between to_date('01032022000000','DDMMYYYYHH24MISS') and to_date('31032022235959','DDMMYYYYHH24MISS') ;
+
+drop table tmp_subscriber_status;
+create table tmp_subscriber_status as select  /*+ parallel(a ,8)*/  a.*  from subscriber_status a where inactive_dt is not null;
+
+drop table tmp01disc02;
+create table tmp01disc02 as 
+select /*+ parallel(a ,8)*/ distinct a.*, b.status_reason_id, inactive_dt from tmp01disc01 a left join tmp_subscriber_status  b on a.subscr_no = b.subscr_no 
+where ( inactive_date = inactive_dt   or b.subscr_no is null) order by inactive_date desc; 
+
+drop table tmp01disc03;
+create table tmp01disc03 aS 
+select /*+ parallel(a ,8)*/ a.*, display_value from tmp01disc02 a left join status_reason_values b on a.status_reason_id = b.status_reason_id ;
+
+ 
+ -- Disconnect reason cannot be determined 
+ drop table tmp01disc04;
+ create table tmp01disc04 as 
+ select /*+ parallel(a ,8)*/ a.* from tmp01disc03 a where status_reason_id is null;  
+ commit;
+
+ -- SO Identified 
+ drop table tmp01disc05;
+ create table tmp01disc05 as 
+  select /*+ parallel(a ,8)*/ a.*, create_who, create_dt, order_status_id, service_order_id, order_id ,  service_order_type_id, wp_process_id, wp_job_id 
+ from tmp01disc03 a join ord_service_order b on a.subscr_no = b.subscr_no where inactive_date = workflow_start_dt ;
+ 
+ 
+ --- FInal output 
+ drop table tmp01disc06;
+ create table tmp01disc06 as 
+ select account_no,  phone, srvcat,  create_who as initiated_by, display_value as disc_reason, service_order_id,  order_id ,  order_status_id, create_dt from tmp01disc05 order by create_dt;
+ 

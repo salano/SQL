@@ -1,0 +1,146 @@
+select 
+   C.ACCOUNT_NO,
+   C.DATE_ACTIVE,
+   to_char(C.DATE_ACTIVE, 'YYYY-MM') as ACTIVE_YYYY_MM,
+   C.BILL_FNAME || ' '||C.BILL_LNAME ||' '|| C.BILL_COMPANY FullName,
+   C.CONTACT2_PHONE||' ' ||C.CONTACT2_PHONE CONTACT_NO,
+   C.CUST_EMAIL,
+   C.BILL_ADDRESS1 ||' '|| C.BILL_ADDRESS2 ||' '||  C.BILL_ADDRESS3 ||' '||  C.BILL_ADDRESS4 ADDRESS,
+   c.statement_to_email,
+  SC.PRIMARY_OFFER_ID,
+  OV.DISPLAY_VALUE,
+  F.DISPLAY_VALUE,
+  e.rc_term_inst_active_dt,
+  A.AMOUNT/100 AS CHARGED_AMOUNT
+
+  
+from 
+  ORD_SERVICE_ORDER SC
+  LEFT JOIN CMF C ON SC.ACCOUNT_NO = C.ACCOUNT_NO
+  left JOIN
+    account_subscriber@read_main1 AC on SC.SUBSCR_NO = AC.SUBSCR_NO and SC.ACCOUNT_NO = AC.ACCOUNT_NO
+  LEFT JOIN OFFER_VALUES OV ON SC.PRIMARY_OFFER_ID = OV.OFFER_ID     
+  LEFT JOIN CMF_BALANCE CB on SC.ACCOUNT_NO = CB.ACCOUNT_NO
+  LEFT JOIN RC A on SC.subscr_no = A.PARENT_SUBSCR_NO AND SC.account_no = A.BILLING_ACCOUNT_NO
+  JOIN RC_TERM_VALUES F
+             ON F.RC_TERM_ID = A.RC_TERM_ID AND F.RESELLER_VERSION_ID = (SELECT MAX(RESELLER_VERSION_ID) FROM RC_TERM_VALUES)
+  JOIN RC_TERM_INST E
+             ON E.RC_TERM_INST_ID = A.RC_TERM_INST_ID
+WHERE
+  SC.ORDER_STATUS_ID=80 AND
+  SC.SERVICE_ORDER_TYPE_ID =10 AND
+  trunc(SC.complete_dt) >=to_date('01-JAN-2020','DD-MON-YYYY') AND
+  OV.RESELLER_VERSION_ID IN (SELECT MAX(RESELLER_VERSION_ID) FROM OFFER_VALUES)
+  AND ROWNUM <= 3
+
+order by
+   C.BILL_FNAME || ' '||C.BILL_LNAME ||' '|| C.BILL_COMPANY
+   ;
+   
+   select * from ORD_SERVICE_ORDER where rownum<= 10;
+   select * from RC  where rownum <=3;
+   select * from RC_TERM_VALUES  where rownum <=3;
+   select * from RC_TERM_INST  where rownum <=3;
+   
+   --------------------------------------------------------------------------------------------------------------
+   select distinct  
+  c.ACCOUNT_NO,
+  eip.EXTERNAL_ID,
+  BILL_FNAME || ' '||BILL_LNAME ||' '|| BILL_COMPANY Name,
+  BILL_ADDRESS1 ||' ' ||BILL_ADDRESS2 ||' '|| BILL_ADDRESS3||' ' || BILL_ADDRESS4||' ' || BILL_CITY||' ' || BILL_STATE||' ' || BILL_ZIP|| ' ' || BILL_COUNTY Address,
+  CUST_EMAIL Email,
+  CUST_PHONE1 ||' '  ||CUST_PHONE2 CustPhone,
+  CONTACT1_PHONE||' ' ||CONTACT2_PHONE ContactPhone,
+  eiv.DISPLAY_VALUE,
+  acv.DISPLAY_VALUE cust_type, 
+  CASE
+     WHEN eip.EXTERNAL_ID_TYPE = 9 THEN 'Landline'
+       WHEN eip.EXTERNAL_ID_TYPE = 11 THEN 'DSL'
+         WHEN eip.EXTERNAL_ID_TYPE = 1 THEN 'Mobile'
+         WHEN eip.EXTERNAL_ID_TYPE = 27 THEN 'Leased Line'
+       WHEN eip.EXTERNAL_ID_TYPE in (37,39) THEN 'Blaze'
+       ELSE 'Unknown'
+  END SERVICE,
+  c.DATE_INACTIVE
+from 
+  CMF c join
+  EXTERNAL_ID_EQUIP_MAP@read_main1 eip on c.ACCOUNT_NO = eip.ACCOUNT_NO
+  join
+  EXTERNAL_ID_TYPE_VALUES eiv on eip.EXTERNAL_ID_TYPE = eiv.EXTERNAL_ID_TYPE and eiv.service_version_id = (select max(service_version_id) from EXTERNAL_ID_TYPE_VALUES) join
+  ACCOUNT_CATEGORY_VALUES acv on c.account_category = acv.account_category and acv.SERVICE_VERSION_ID = (select max(SERVICE_VERSION_ID) from ACCOUNT_CATEGORY_VALUES) left join
+  OFFER_INST@read_main1 A ON A.SUBSCR_NO = eip.SUBSCR_NO
+  INNER JOIN
+		OFFER_VALUES O ON A.OFFER_ID=O.OFFER_ID AND RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM OFFER_VALUES)
+where
+        trunc(A.EFFECTIVE_DT)<=trunc(current_date) 
+        AND trunc(A.EXPIRY_DT)> trunc(current_date)
+		AND A.INACTIVE_DT IS NULL 
+		AND A.OFFER_TYPE =2 -- PRIMARY OFFER
+		AND A.ACCOUNT_NO <> 0
+		AND A.SUBSCR_NO IN( SELECT 
+						 SUBSCR_NO
+						 FROM 
+						 EXTERNAL_ID_EQUIP_MAP@read_main1
+						 WHERE
+						 EXTERNAL_ID_TYPE = 11 --DSL
+						 AND trunc(EFFECTIVE_DT)<=trunc(current_date) 
+						 AND trunc(EXPIRY_DT)>trunc(current_date)
+						 --AND INACTIVE_DATE IS NULL
+						 ) 
+
+   c.DATE_INACTIVE is  null
+   
+   
+select * from OFFER_INST@read_main1;
+
+
+
+-----------------------------------------------------------------------------------
+
+   select distinct  
+  c.ACCOUNT_NO,
+  eip.EXTERNAL_ID AS Phone,
+  BILL_FNAME || ' '||BILL_LNAME ||' '|| BILL_COMPANY Name,
+  C.DATE_ACTIVE,
+  to_char(C.DATE_ACTIVE, 'YYYY-MM') as ACTIVE_YYYY_MM,
+  A.ACTIVE_DT OFFER_ACTIVE_DT,
+  OV.DISPLAY_VALUE AS Description,
+  round(RRC.RATE/100) AS RATE ,
+  BILL_ADDRESS1 ||' ' ||BILL_ADDRESS2 ||' '|| BILL_ADDRESS3||' ' || BILL_ADDRESS4||' ' || BILL_STATE||' ' || BILL_ZIP|| ' ' || BILL_COUNTY Address,
+  BILL_CITY,
+  CUST_EMAIL Email,
+  c.statement_to_email,
+  CUST_PHONE1 ||' '  ||CUST_PHONE2 CustPhone,
+  CONTACT1_PHONE||' ' ||CONTACT2_PHONE ContactPhone,
+  acv.DISPLAY_VALUE cust_type, 
+  BDM.DISPLAY_VALUE as dispatch_method
+
+from 
+  ATNI_PROD.GTT_REPORTING.CMF c join
+  ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on c.ACCOUNT_NO = eip.ACCOUNT_NO AND date(eip.EXTRACT_FILE_DATE) = date(CURRENT_DATE())
+  join
+  ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES acv on c.account_category = acv.account_category and acv.SERVICE_VERSION_ID = (select max(SERVICE_VERSION_ID) from ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES) AND date(acv.EXTRACT_FILE_DATE) = date(CURRENT_DATE())  join
+  ATNI_PROD.GTT_REPORTING.OFFER_INST A ON A.SUBSCR_NO = eip.SUBSCR_NO /*AND date(A.EXTRACT_FILE_DATE) = date(CURRENT_DATE()) */
+  JOIN ATNI_PROD.GTT_REPORTING.OFFER_VALUES OV ON A.OFFER_ID = OV.OFFER_ID AND OV.RESELLER_VERSION_ID IN (SELECT MAX(RESELLER_VERSION_ID) FROM OFFER_VALUES)
+  JOIN ATNI_PROD.GTT_REPORTING.RATERC RRC ON A.OFFER_ID =  RRC.OFFER_ID AND RRC.RESELLER_VERSION_ID IN (SELECT MAX(RESELLER_VERSION_ID) FROM ATNI_PROD.GTT_REPORTING.RATERC)
+  INNER JOIN
+		--ATNI_PROD.GTT_REPORTING.OFFER_VALUES O ON A.OFFER_ID=O.OFFER_ID AND O.RESELLER_VERSION_ID IN (SELECT MAX(RESELLER_VERSION_ID) FROM OFFER_VALUES) AND date(O.EXTRACT_FILE_DATE) = date(CURRENT_DATE())
+   ATNI_PROD.GTT_REPORTING.BILL_DISP_METH_VALUES BDM on  c.BILL_DISP_METH = BDM.BILL_DISP_METH
+where
+
+        A.INACTIVE_DT IS NULL 
+		AND A.OFFER_TYPE =2 -- PRIMARY OFFER
+		AND A.ACCOUNT_NO <> 0
+		AND A.SUBSCR_NO IN( SELECT
+		                 DISTINCT 
+						 SUBSCR_NO
+						 FROM 
+						 ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP
+						 WHERE
+						 EXTERNAL_ID_TYPE = 11 --DSL
+						 AND DATE(EFFECTIVE_DT)<=CURRENT_DATE 
+						 AND DATE(EXPIRY_DT)>CURRENT_DATE
+						 --AND INACTIVE_DATE IS NULL
+						 ) 						 
+ AND c.DATE_INACTIVE is  NULL
+ AND c.IS_CURRENT  = 'Y'

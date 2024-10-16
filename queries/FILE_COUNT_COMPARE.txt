@@ -1,0 +1,56 @@
+WITH SWITC_COUNT(FILE_DATE, SWITCH_NAME, FILES_COUNT) AS 
+	(
+	SELECT 
+		distinct
+		FILE_DATE,
+		SWITCH_NAME,
+		nth_value(FILES_COUNT, 1) OVER 
+			  			(PARTITION BY FILE_DATE, SWITCH_NAME ORDER BY FILE_DATE DESC 
+			  			RANGE BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING
+			  			) AS FILES_COUNT
+	FROM 
+		ATNI_PROD.CDR.DAILY_GFTP_CDR_FILE_COUNT 
+	WHERE date(file_date) = date(current_date -1)
+), 
+SF_COUNT (file_desc, file_date, FILE_COUNT)
+	as (
+
+
+			SELECT 'gtt - airspan georgetowngy' AS file_desc,  date(current_date -1) AS file_date, count(DISTINCT EXTRACT_FILE_NAME) AS FILE_COUNT FROM ATNI_PROD.GTT_REPORTING.AIRSPAN_CDR WHERE date(EXTRACT_FILE_DATE) = date(current_date -1)
+			union
+			SELECT 'gtt - ericsson_gsm georgetowngy' AS file_desc,  date(current_date -1) AS file_date, count(DISTINCT FILENAME) AS FILE_COUNT FROM ATNI_PROD.CDR.GTT_ERICSSON_GSM WHERE FILENAME LIKE concat('%.', to_char(current_date -1, 'YYYYMMDD'), '%')
+			union
+			SELECT 'gtt - ericsson_lte georgetowngy' AS file_desc,  date(current_date -1) AS file_date, count(DISTINCT FILE_NAME) AS FILE_COUNT FROM ATNI_PROD.CDR.GTT_ERICSSON_LTE WHERE FILE_NAME LIKE concat('%_', to_char(current_date -1, 'YYYYMMDD'), '%')
+			union
+			SELECT 'gtt - genband georgetowngy' AS file_desc,  date(current_date -1) AS file_date, count(DISTINCT EXTRACT_FILE_NAME) AS FILE_COUNT FROM ATNI_PROD.GTT_REPORTING.GENBAND_CDR WHERE date(EXTRACT_FILE_DATE) = date(current_date -1)
+			union
+			SELECT 'gtt - ggsn georgetowngy' AS file_desc,  date(current_date -1) AS file_date, count(DISTINCT filename) AS FILE_COUNT FROM ATNI_PROD.CDR.GTT_ERICSSON_GGSN WHERE FILENAME LIKE concat('%_', to_char(current_date -1, 'YYYYMMDD'), '%')
+			union
+			SELECT 'commnetus - aluaaa castlerockco' AS file_desc,  date(current_date -1) AS file_date, count(DISTINCT FILE_NAME) AS FILE_COUNT FROM ATNI_PROD.CDR.CH_ALUAAA WHERE FILE_NAME LIKE concat('%.', to_char(current_date -1, 'YYYYMMDD'), '%')
+			union
+			SELECT 'commnetus - volte archive' AS file_desc,  date(current_date -1) AS file_date, count(DISTINCT FILE_NAME) AS FILE_COUNT FROM ATNI_PROD.CDR.CH_ERICSSON_VOLTE WHERE FILE_NAME LIKE concat('%.', to_char(current_date -1, 'YYYYMMDD'), '%')
+			union
+			SELECT 'commnetus - zteumts atlantatx' AS file_desc,  date(current_date -1) AS file_date, count(DISTINCT FILE_NAME) AS FILE_COUNT FROM ATNI_PROD.CDR.CH_ZTE_UMTS WHERE FILE_NAME LIKE concat('%', to_char(current_date -1, 'YYYYMMDD'), '%') 
+			union
+			SELECT 'commnetus - ztevoice atlantatx' AS file_desc,  date(current_date -1) AS file_date, count(DISTINCT FILE_NAME) AS FILE_COUNT FROM ATNI_PROD.CDR.CH_ZTE_VOICE WHERE FILE_NAME LIKE concat('%.B', to_char(current_date -1, 'YYMMDD'), '%') 
+			union
+			SELECT 'Essextel - archive' AS file_desc,  date(current_date -1) AS file_date, count(DISTINCT FILE_NAME) AS FILE_COUNT FROM ATNI_PROD.CDR.ESSEXTEL WHERE FILE_NAME LIKE concat('%_', to_char(current_date -1, 'YYYY_MM_DD'), '%') 
+			union
+			SELECT 'commnetus - affirmpgw denverco' AS file_desc,  date(current_date -1) AS file_date, count(DISTINCT FILE_NAME) AS FILE_COUNT FROM ATNI_PROD.CDR.CH_AFFIRMED_PGW_DENVER WHERE FILE_NAME LIKE concat('%_', to_char(current_date -1, 'YYYYMMDD'), '%')
+			union
+			SELECT 'commnetus - affirmpgw lasvegasnv' AS file_desc,  date(current_date -1) AS file_date, count(DISTINCT FILE_NAME) AS FILE_COUNT FROM ATNI_PROD.CDR.CH_AFFIRMED_PGW_LASVEGAS WHERE FILE_NAME LIKE concat('%_', to_char(current_date -1, 'YYYYMMDD'), '%')
+			
+	)
+	
+	SELECT
+	a.FILE_DATE,
+	a.SWITCH_NAME,
+	a.FILES_COUNT AS FTP_COUNT,
+	b.FILE_COUNT AS SNOWFLAKE_COUNT
+	FROM 
+		SWITC_COUNT A
+		LEFT JOIN SF_COUNT B
+			ON A.FILE_DATE = B.file_date AND  a.SWITCH_NAME=file_desc
+	WHERE a.SWITCH_NAME NOT IN ('viya - ericsson_umts stmaarten','bermuda - ericsson_sgw hamiltonbm','bermuda - ericsson_sgsn hamiltonbm','gtt - hlr georgetowngy',
+	'bermuda - ericsson_pgw hamiltonbm','gtt - ericsson_gprs georgetowngy','viya - ericsson_sgsn stmaarten','commnetus - zte1x castlerockco','gtt - sandvine_usage georgetowngy',
+	'BDC - tss UDR','viya - ericsson_lte stmaarten')

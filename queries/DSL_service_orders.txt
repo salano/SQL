@@ -1,0 +1,113 @@
+  select 
+    ord.service_order_ID,
+    ord.create_DT,
+    ord.complete_DT,
+    ord.subscr_no,
+    ord.account_NO,
+    ord.service_order_type_id,
+    orv.display_value
+  from 
+    ord_service_order ord join
+    CBS_OWNER.ORD_ORDER_STATUS_VALUES ORV on ord.order_status_id = orv.order_status_id join
+    EXTERNAL_ID_EQUIP_MAP@read_main1 eip on ord.ACCOUNT_NO = eip.ACCOUNT_NO
+where 
+    Service_order_type_id=10 and
+    eip.external_id_type=11 and
+    trunc(ord.create_DT) between to_date('2019-01-01','yyyy-mm-dd') and to_date('2019-12-31','yyyy-mm-dd');
+	
+	
+	
+	------------------------------------------------------------------------------
+	
+       select
+username,
+service_order_id,
+account_no,
+telephone_number,
+assign_date,
+completion_date,
+proci_id,
+proci_node_id,
+node_type_id,
+node_state_id,
+parent_workflow,
+workflow_node,
+order_status_id,
+display_value
+from(
+select
+distinct
+wpn.lu_id as username,
+pid.service_order_id,
+pid.account_no,
+pid.telephone_number,
+to_char(pid.assign_date,'yyyy-mm-dd hh24:mi:ss') as assign_date,
+case
+  when wpn.node_state_id<>2 then to_char(wpn.lu_date,'yyyy-mm-dd hh24:mm:ss')
+  else
+     null
+end as completion_date,
+pid.proci_id,
+proci_node_id,
+wpn.node_type_id,
+wpn.node_state_id,
+pid.name as parent_workflow,
+wpn.name as workflow_node,
+pid.order_status_id,
+pid.display_value
+
+from
+    cbs_owner.WP_PROCI_NODE_HIST wpnh    
+    inner join(
+              select 
+                distinct
+                wp_id.account_no,
+                wp_id.subscr_no,
+                wp_id.telephone_number,
+                wp_id.service_order_id,
+                wp_id.order_status_id,
+                wp_id.display_value,
+                wp.proci_id,
+                wp.name,
+                wpu.var_name,
+                to_char(wpu.var_cvalue) as var_cvalue,
+                wp.start_date as assign_date,
+                wp.root_parent_id as wp_job_id
+                from 
+                cbs_owner.wp_proci wp
+                 inner join(
+                      select 
+                       replace(oso.wp_job_id, ':WPDS', '') as wp_job_id,
+                       oso.account_no,
+                       oso.subscr_no,
+                       oso.service_order_id,
+                       sk.display_external_id as telephone_number,
+                       oso.order_status_id,
+                       orv.display_value
+                      from 
+                      ord_service_order@read_cust1 oso
+                      left join
+                      subscriber_key@read_cust1 sk on oso.subscr_no=sk.subscr_no left join
+                      CBS_OWNER.ORD_ORDER_STATUS_VALUES@read_cust1 ORV on oso.order_status_id = orv.order_status_id
+                      where 
+                        --oso.order_status_id not in (90,80)---get all incomplete DSL orders
+                        --and oso.create_who not in ('rmarsumali', 'csm_user', 'csmuser')
+                        --and oso.wp_process_id like 'DSLC%'
+                        --and trunc(oso.create_dt)>'01-JAN-20'
+                        oso.Service_order_type_id=10 and
+                        trunc(oso.create_DT) between to_date('2019-01-01','yyyy-mm-dd') and to_date('2019-12-31','yyyy-mm-dd')
+                   )wp_id on to_char(root_parent_id)=wp_job_id
+                   inner join
+                   cbs_owner.wp_user_data wpu on wp.proci_id=wpu.proci_id
+                
+                      
+             ) pid on pid.proci_id=wpnh.proci_id
+            
+      inner join
+              cbs_owner.wp_proci_node wpn using(proci_node_id)
+
+      
+)
+where
+node_state_id<>2 or (node_state_id=2 and workflow_node is not null)
+order by telephone_number, assign_date

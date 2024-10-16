@@ -1,0 +1,66 @@
+select
+  --TO_DATE (?,'mm/dd/yy') +1/24 as FD,
+    trunc(current_date) as FD,
+  approved_value,
+    approved_count
+from
+  (
+  
+SELECT 
+ sum(TP.AMOUNT) AS approved_value,
+count(1) as approved_count
+   FROM 
+    GTTUACCESSADM.trans T 
+                LEFT JOIN
+      GTTUACCESSADM.TRANS_TYPE TT
+      ON (T.TRANS_TYPE_ID = TT.ID)
+               
+LEFT JOIN
+   user_reference UR
+ON (T.CREDITOR_REFERENCE = UR.REFERENCE) AND UR.IS_DELETED = 0
+LEFT JOIN
+  user_reference UR1
+ON (T.DEBTOR_REFERENCE = UR1.REFERENCE) AND UR1.IS_DELETED = 0
+
+      LEFT JOIN  
+      GTTUACCESSADM.TRANS_PARTY TP
+      ON (TP.TRANS_ID = T.ID)
+       AND TP.USER_REF_ID = UR.ID AND TP.ROLE_ID='CR'
+                  
+LEFT JOIN                GTTUACCESSADM.USER_ U
+                              ON (UR.USER_ID = U.ID)
+
+LEFT JOIN                GTTUACCESSADM.USER_ U1
+                              ON (UR1.USER_ID = U1.ID)                          
+LEFT JOIN
+     GTTUACCESSADM.user_details UD
+     ON (U.LATEST_USER_DETAILS_ID = UD.ID) 
+LEFT JOIN
+     GTTUACCESSADM.user_details UD1
+     ON (U1.LATEST_USER_DETAILS_ID = UD1.ID) 
+     
+LEFT JOIN
+           GTTUACCESSADM.WALLET WL
+      ON (U.OWNER_ID =  WL.OWNER_USER_ID ) AND WL.WALLET_TYPE_ID = 1
+                 
+ LEFT JOIN 
+                                              (SELECT SUM(AMOUNT) AS AMOUNT,CREDITOR_REFERENCE, DEBTOR_REFERENCE, SERVICE_TRANS_ID, SERVICE_TRANS_TYPE_ID
+                                                 FROM GTTUACCESSADM.FEE
+                                                 GROUP BY CREDITOR_REFERENCE, DEBTOR_REFERENCE, SERVICE_TRANS_ID, SERVICE_TRANS_TYPE_ID) FEE            
+                 ON (T.ID = FEE.SERVICE_TRANS_ID)  AND UR.REFERENCE = FEE.DEBTOR_REFERENCE
+LEFT JOIN
+      GTTUACCESSADM.BONUS BO
+      ON (T.ID = BO.SERVICE_TRANS_ID) 
+INNER JOIN
+      GTTUACCESSADM.WALLET_BALANCE WB
+      ON  WB.TRANS_ID = T.ID  AND WL.ID = WB.WALLET_ID  
+                 
+                 
+WHERE T.DESCRIPTION not in ('Fee','Bonus')   AND
+    T.IS_SUCCESSFUL = 1 AND 
+    T.WALLET_TYPE_ID = 1 AND
+    t.TRANS_TYPE_ID = 'gttself_pre_pay' AND
+    t.REVERSED_ID = 0 AND
+    TRUNC(T.COMPLETED_DATE) between trunc(current_date -7) and trunc(current_date)  --TO_DATE (?,'mm/dd/yy') and TO_DATE (?,'mm/dd/yy') + 7
+    --TRUNC(T.COMPLETED_DATE) between TO_DATE (?,'mm/dd/yy') and TO_DATE (?,'mm/dd/yy') + 7
+)sub -- CEO_DASH_BASE_MMG_TOP_UP

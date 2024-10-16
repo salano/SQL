@@ -1,0 +1,74 @@
+
+Fiber Matrix  - After onthly Suspensions
+
+drop table tmp01david;
+ create table tmp01david as select /*+ parallel(a,8)*/  a.*  from external_id_equip_map@main1 a where external_id_type = 37 and inventory_id is not null 
+ and (active_date <= to_Date('31082022235959','DDMMYYYYHH24MISS') and (inactive_date is null  or inactive_date >= to_Date('01092022000000','DDMMYYYYHH24MISS') ));
+ select /*+ parallel(a,8)*/ count(distinct account_no) as total_fiber_subs  from tmp01david a  ;
+  select /*+ parallel(a,8)*/ count(distinct subscr_no) as total_fiber_subs  from tmp01david a  ;
+ ------------------------- written off 
+ drop table tmp03david;
+ create table tmp03david as 
+select /*+ parallel(a,8)*/ count(distinct a.account_no)  as written_off_fiber  from tmp01david a join cmf b on a.account_no = b.account_no where account_status = -2 ;
+
+---------------------------- Total Billable
+select /*+ parallel(a,8)*/ count(distinct a.account_no ) from tmp01david a join  bill_invoice b on a.account_no = b.account_no where prep_error_code is null and prep_status in(1,2)
+ and backout_status = 0 and statement_date = to_Date('01092022','DDMMYYYY');
+ -----------------------------------  Total billed with RCS
+
+  drop table tmp001david;
+ create table tmp001david as 
+ select  /*+ parallel(a,8)*/  a.account_no, c.*  from tmp01david a join  bill_invoice b on a.account_no = b.account_no join bill_invoice_detail c on b.bill_ref_no = c.bill_ref_no 
+  where prep_error_code is null and prep_status in(1,2)
+ and backout_status = 0 and statement_date = to_Date('01092022','DDMMYYYY')
+ and type_code = 2 and amount_postpaid > 0;
+
+ select  count(distinct account_no)  from tmp001david
+  select  count(distinct subscr_no )  from tmp001david
+ ------------------  Disconnected   but not written off   -----------
+  
+ select count(distinct a.account_no)  from tmp01david a join cmf b on a.account_no = b.account_no where date_inactive is not null and account_status <> -2 
+ -----------------------    No Supplimentary Offer   assigned
+  drop table tmp002david;
+ create table tmp002david as 
+ select  /*+ parallel(a,8)*/  a.account_no, c.*, offer_type  from tmp01david a join  bill_invoice b on a.account_no = b.account_no join bill_invoice_detail c on b.bill_ref_no = c.bill_ref_no 
+ join offer_ref d on c.offer_id = d.offer_id  where prep_error_code is null and prep_status in(1,2)
+ and backout_status = 0 and statement_date = to_Date('01092022','DDMMYYYY')
+ and type_code = 2 and reseller_version_id in(select max(reseller_version_id) from reseller_version); 
+select account_no,count(*) as  cnt  from tmp002david  group by account_no  having count(*) = 1
+
+ -----------------------    Suspended before Jan and still in suspended  
+
+drop table tmp05david;
+create table tmp05david as 
+select /*+ parallel(a,8)*/    a.account_no,  b.* from tmp01david a join subscriber_status b on a.subscr_no = b.subscr_no where status_id = 3 and active_dt <= to_date('31082022235959','DDMMYYYYHH24MISS')
+ and inactive_dt is null;
+
+
+select count(distinct account_no ) from tmp05david
+
+select count(distinct subscr_no) from tmp05david
+ ---------------  Suspended and resumed in the same month  ----------------------
+  drop table tmp003david;
+create table tmp003david as 
+select /*+ parallel(a,8)*/ a.*, b.col_enter_date as b_col_enter_date, b.event  as b_event from report_col  a join report_col b on a.external_id = b.external_id 
+where 
+a.event = 'Suspend Service GPON' and a.col_enter_date between to_Date('01092022000000','DDMMYYYYHH24MISS') and to_date('30092022235959','DDMMYYYYHH24MISS')
+and 
+b.event = 'Resume Service GPON'  and b.col_enter_date between to_Date('01092022000000','DDMMYYYYHH24MISS') and to_date('30092022235959','DDMMYYYYHH24MISS')
+select count(distinct account_no)  from tmp003david
+
+
+ -------  Suspended and still suspended at time of report   
+  
+
+drop table tmp004david01;
+create table tmp004david01 as 
+select /*+ parallel(a,8)*/  a.* from report_col a where event = 'Resume Service GPON' 
+ and col_enter_date between to_Date('01092022000000','DDMMYYYYHH24MISS') and to_date('23092022060000','DDMMYYYYHH24MISS');
+ drop table tmp004david02;
+create table tmp004david02 as 
+select /*+ parallel(a,8)*/  a.* from report_col a left join tmp004david01 b on a.external_id = b.external_id where a.event = 'Suspend Service GPON' 
+ and a.col_enter_date between to_Date('01092022000000','DDMMYYYYHH24MISS') and to_date('23092022060000','DDMMYYYYHH24MISS')
+ and b. external_id is null ;
+select count(distinct account_no)  from tmp004david02

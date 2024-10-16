@@ -1,0 +1,34 @@
+drop table tmpplume00;
+create table tmpplume00 as
+select /*+ parallel(a ,8)*/ account_no, external_id, subscr_no, active_date, inactive_date, external_id_type, inventory_id from external_id_equip_map@main1 where inactive_date is null and inventory_id is not null and external_id_type in(37,39,40,41);
+
+drop table tmpplume46;
+create table tmpplume46 as
+select /*+ parallel(a ,8)*/ account_no, external_id, subscr_no, active_date, inactive_date, external_id_type, inventory_id from external_id_equip_map@main1 where inactive_date is null and inventory_id is not null and external_id_type in(46);
+
+drop table tmpplume47;
+create table tmpplume47 as
+select /*+ parallel(a ,8)*/ account_no, external_id, subscr_no, active_date, inactive_date, external_id_type, inventory_id from external_id_equip_map@main1 where inactive_date is null and inventory_id is not null and external_id_type in(47);
+
+drop table tmpplume48;
+create table tmpplume48 as
+select /*+ parallel(a ,8)*/ account_no, external_id, subscr_no, active_date, inactive_date, external_id_type, inventory_id from external_id_equip_map@main1 where inactive_date is null and inventory_id is not null and external_id_type in(48);
+
+drop table tmpplume49;
+create table tmpplume49 as
+SELECT /*+ parallel(a ,8)*/ distinct a.account_no , a.active_date as acc_active_date, a.external_id , a.subscr_no ,b.external_id AS fsan, b.active_date as fsan_active_date, c.external_id as SIP_end_point , c.active_date as sip_end_point_active_date,
+d.external_id as plume_cust_id, D.ACTIVE_DATE as plume_cust_active_dt, e.external_id as super_pod_serial, e.active_date as super_pod_serial_act_dt, f.external_id as power_pod_serial , f.active_date as power_pod_serial_act_dt
+FROM tmpplume00 a LEFT JOIN tmpplume00 b ON a . subscr_no = b . subscr_no
+LEFT JOIN tmpplume00 c on a.subscr_no = c.subscr_no LEFT JOIN tmpplume46 d on a.subscr_no = d.subscr_no LEFT JOIN tmpplume47 e on a.subscr_no = e.subscr_no
+LEFT JOIN tmpplume48 f on a.subscr_no = f.subscr_no WHERE a .external_id_type IN(37,39) AND b .external_id_type IN(40) and c .external_id_type IN(41)
+and substr(a.external_id ,1, 3) = '592' AND a.inactive_date IS NULL and b.inactive_date IS NULL and c.inactive_date IS NULL
+and d.inactive_date IS NULL and e.inactive_date IS NULL and f.inactive_date IS NULL and a.inventory_id is not null and b.inventory_id is not null
+order by a.external_id;
+
+
+drop table tmpplume50;
+create table tmpplume50 as
+select /*+ parallel(a ,8)*/ a.account_no, a.external_id as phone, a.subscr_no, b.bill_fname, bill_lname, bill_company, bill_address1, bill_address2, bill_address3, contact1_phone, contact2_phone, cust_email, statement_to_email,
+fsan, fsan_active_date, sip_end_point, sip_end_point_active_date, plume_cust_id, plume_cust_active_dt, super_pod_serial, super_pod_serial_act_dt, power_pod_serial,
+power_pod_serial_act_dt from tmpplume49 a join cmf b on a.account_no = b.account_no
+where super_pod_serial is not null

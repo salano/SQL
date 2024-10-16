@@ -1,0 +1,25 @@
+SELECT 
+	from_unixtime(cps_payment_log_cube.request_date) as `Request Date`,
+    from_unixtime(cps_payment_log_cube.response_date) as `Response Date`,
+    CONCAT(cps_payment_log_cube.series,cps_payment_log_cube.fol_number) as `Series Folio`,
+    csy_mbrc_cube.mbrc_name as `Branch`,
+    cps_payment_log_cube.clerk as `Agent`,
+    cps_payment_log_cube.transaction_type as `Transaction Type`,
+    cps_payment_log_cube.amount as `Amount`,
+    cps_payment_log_cube.mms_tran_id as `Transaction ID`,
+    cps_payment_log_cube.transaction_status as `Sataus`,
+    cps_payment_log_cube.response_code as `Response Code`,
+    cps_payment_log_cube.response_text as `Response Text`,
+    IF(tran_header_cube.void_status = 'V', 'VOID', 'APPLIED') AS `Void Status`
+FROM cps_payment_log_cube
+JOIN dealers on dealers.dealer_tag = cps_payment_log_cube.dealer_tag
+JOIN csy_mbrc_cube on csy_mbrc_cube.mbrc_branch = cps_payment_log_cube.branch AND csy_mbrc_cube.dealer_tag = cps_payment_log_cube.dealer_tag
+JOIN csy_acl_cube on csy_acl_cube.clerk =  cps_payment_log_cube.clerk AND csy_acl_cube.dealer_tag =  cps_payment_log_cube.dealer_tag
+JOIN tran_header_cube on tran_header_cube.series = cps_payment_log_cube.series AND tran_header_cube.folio_number = cps_payment_log_cube.fol_number AND tran_header_cube.dealer_tag = cps_payment_log_cube.dealer_tag
+WHERE 
+    CASE 1 # Transaction filter        
+        WHEN 2 THEN cps_payment_log_cube.transaction_type IN('PrePaidTopUp')
+        WHEN 3 THEN cps_payment_log_cube.transaction_type IN( 'postpaidPostAccountPaym')
+        ELSE  cps_payment_log_cube.transaction_type IN( 'postpaidPostAccountPaym','PrePaidTopUp')
+    END  
+    AND tran_header_cube.tran_date BETWEEN UNIX_TIMESTAMP('2020-04-01 00:00:00') AND UNIX_TIMESTAMP('2020-04-01 23:59:59')

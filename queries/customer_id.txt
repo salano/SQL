@@ -1,0 +1,26 @@
+select 
+        distinct
+     C.ACCOUNT_NO,
+     E.EXTERNAL_ID customer_id, 
+     acv.DISPLAY_VALUE account_type,
+     C.BILL_FNAME ,
+    C.BILL_LNAME ,
+    C.BILL_COMPANY ,
+    C.BILL_ADDRESS1 ,
+    C.BILL_ADDRESS2 ,
+    C.BILL_ADDRESS3 ,
+    C.BILL_ADDRESS4 ,
+    C.BILL_CITY ,
+    external_id_type,
+    E.INACTIVE_DATE
+from 
+    ATNI_PROD.GTT_REPORTING.CMF_EXTRACT c 
+    LEFT JOIN ATNI_PROD.GTT_REPORTING.CUSTOMER_ID_ACCT_MAP E on e.account_no = c.account_no AND external_id_type = 8 
+    join ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES acv on c.account_category = acv.account_category and acv.SERVICE_VERSION_ID = (select max(SERVICE_VERSION_ID) from ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES)
+where ---is_current = 1
+	E.INACTIVE_DATE IS null
+    AND C.account_category IN (3,7,11,4)
+    AND date(C.EXTRACT_FILE_DATE) = date(current_date)
+    AND C.DATE_INACTIVE IS null
+    AND C.ACCOUNT_NO IN (SELECT distinct ACCOUNT_NO FROM ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT WHERE date(EXTRACT_FILE_DATE) = date(current_date))
+ORDER BY 2,1

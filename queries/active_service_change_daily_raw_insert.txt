@@ -1,0 +1,21 @@
+INSERT INTO
+ 
+		ATNI_DEV.GTT_REPORTING.DATA_QUALITY_TABLE_CONFIG_NEW
+		SELECT ATNI_DEV.GTT_REPORTING.DQ_CONFIG_seq.NEXTVAL,
+		'atni_prod.SW_REPORTING.active_service_change_daily_raw',ARRAY_CONSTRUCT('Account_number', 'Network_number', 'Service_code', 'datestart', 'event_label','Unique_hash'),
+		'NULL_CHECK',null,null,NULL,NULL,0,1,null,null,null,1,null,null,null;
+		
+		
+INSERT INTO
+ 
+		ATNI_DEV.GTT_REPORTING.DATA_QUALITY_TABLE_CONFIG_NEW
+		SELECT ATNI_DEV.GTT_REPORTING.DQ_CONFIG_seq.NEXTVAL,
+		'atni_prod.SW_REPORTING.active_service_change_daily_raw',ARRAY_CONSTRUCT('Unique_hash'),
+		'UNIQUE_CHECK',null,null,NULL,NULL,0,1,null,null,null,1,null,null,null;
+		
+INSERT INTO
+ 
+		ATNI_DEV.GTT_REPORTING.DATA_QUALITY_TABLE_CONFIG_NEW
+		SELECT ATNI_DEV.GTT_REPORTING.DQ_CONFIG_seq.NEXTVAL,
+		'atni_prod.SW_REPORTING.active_service_change_daily_raw',ARRAY_CONSTRUCT('MIGRATION OUT','MIGRATION IN','REACTIVATION OF NGA','NEGATIVE GROSS ACTIVATION','ACTIVATION','REACTIVATION','DEACTIVATION'),
+		'VALUE_CHECK',null,null,NULL,NULL,0,1,null,null,null,1,'EVENT_LABEL',null,null;

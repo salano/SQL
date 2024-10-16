@@ -1,0 +1,46 @@
+select 
+                distinct
+                wp_id.account_no,
+                wp_id.subscr_no,
+                wp_id.telephone_number,
+                wp_id.service_order_id,
+                wp_id.order_status_id,
+                wp_id.display_value,
+                wp.proci_id,
+                wp.name,
+                wpu.var_name,
+                to_char(wpu.var_cvalue) as var_cvalue,
+                wp.start_date as assign_date,
+                wp.root_parent_id as wp_job_id,
+                wpn.lu_id as username,
+                case
+                  when wpn.node_state_id<>2 then to_char(wpn.lu_date,'yyyy-mm-dd hh24:mm:ss')
+                  else
+                     null
+                end as completion_date,
+                wpn.node_type_id,
+                wpn.node_state_id,
+                wpn.name as workflow_node
+                from 
+                cbs_owner.wp_proci wp
+                 inner join(
+                      select 
+                       replace(oso.wp_job_id, ':WPDS', '') as wp_job_id,
+                       oso.account_no,
+                       oso.subscr_no,
+                       oso.service_order_id,
+                       sk.display_external_id as telephone_number,
+                       oso.order_status_id,
+                       orv.display_value
+                      from 
+                      ord_service_order@read_cust1 oso
+                      left join
+                      subscriber_key@read_cust1 sk on oso.subscr_no=sk.subscr_no left join
+                      CBS_OWNER.ORD_ORDER_STATUS_VALUES@read_cust1 ORV on oso.order_status_id = orv.order_status_id
+                      where 
+                            oso.order_id in (select ordernumber from landline_order_tmp@read_cust1 where rownum < 6 and ordernumber not like '%css%')
+                   )wp_id on to_char(root_parent_id)=wp_job_id
+                   inner join
+                   cbs_owner.wp_user_data wpu on wp.proci_id=wpu.proci_id
+                   inner join
+                    cbs_owner.wp_proci_node wpn on wp.proci_id=wpn.proci_id

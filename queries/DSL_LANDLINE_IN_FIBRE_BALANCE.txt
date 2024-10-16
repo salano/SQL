@@ -1,0 +1,63 @@
+
+			SELECT 
+			    distinct
+				sub.*,
+				EN.EXCHANGE
+			FROM 
+				(
+				SELECT
+				    distinct
+					eip.ACCOUNT_NO ,
+					eip.EXTERNAL_ID ,
+					eip.SUBSCR_NO,
+					CASE WHEN Eip.EXTERNAL_ID_TYPE = 9 THEN 'Landline'
+						ELSE 
+							'DSL'
+					END Service,
+					C.BILL_FNAME ,
+					C.BILL_LNAME ,
+					C.BILL_COMPANY ,
+					C.BILL_ADDRESS1 ,
+					C.BILL_ADDRESS2 ,
+					C.BILL_ADDRESS3 ,
+					C.BILL_ADDRESS4 ,
+					C.BILL_CITY ,
+					C.CONTACT1_PHONE,
+					C.CONTACT2_PHONE, 
+					C.CUST_EMAIL,
+					round(AB.TOTAL /100, 2) AS balance_due
+					
+				FROM
+					GTT_REPORTING.CMF_EXTRACT C 
+					JOIN ATNI_PROD.GTT_REPORTING.EXTERNAL_ID_EQUIP_MAP_EXTRACT eip on C.ACCOUNT_NO = eip.ACCOUNT_NO AND date(eip.EXTRACT_FILE_DATE) = date(CURRENT_DATE())
+					AND EIP.IS_CURRENT = 1
+					LEFT JOIN ATNI_PROD.GTT_REPORTING.AGED_BALANCES_EXTRACT AB ON C.ACCOUNT_NO = AB.ACCOUNT_NO AND date(AB.EXTRACT_FILE_DATE) = date(CURRENT_DATE())
+				WHERE
+					Eip.EXTERNAL_ID_TYPE IN (9,11)
+					AND DATE_INACTIVE IS NULL
+					AND C.DATE_INACTIVE IS NULL 
+			) SUB
+			LEFT JOIN ATNI_DEV.GTT_REPORTING.EXCHANGE_NAMES EN
+				ON try_to_numeric(SUBSTRING(SUB.EXTERNAL_ID, 4, 3)) = EN.prefix AND try_to_numeric(SUBSTRING(SUB.EXTERNAL_ID, 7, 1)) >= EN.LOWER_RANGE AND try_to_numeric(SUBSTRING(SUB.EXTERNAL_ID, 7, 1)) <= EN.UPPER_RANGE
+			WHERE (EN.EXCHANGE IN (
+				
+							SELECT 
+								EXCHANGE -- GPON EXCHANGES
+							FROM 
+								ATNI_PROD.GTT_REPORTING.DSL_DUMPS_DNS_RAW 
+							WHERE 
+								date(dump_ts) = date(CURRENT_DATE())
+							    AND CONCAT('592',PHONE_NUMBER) IN 
+							    (SELECT 
+									PHONE 
+								FROM 
+									ATNI_PROD.GTT_REPORTING.tmp_DSL_blaze_area
+								WHERE 
+									"GPON AREA" ='Y'
+									--AND (upper(OFFER_DESCRIPT) LIKE '%CONSUMER%' OR upper(OFFER_DESCRIPT) LIKE '%EMPLOYEE%')
+								)
+									
+				)
+				
+			OR EN.EXCHANGE in ('Amelia''s Ward','V/Hoop (Poudroyen)','Non Pariel (ECD)','New Amsterdam','Mahaica'))
+	

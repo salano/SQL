@@ -1,0 +1,15 @@
+Plan Name	Offer ID 
+Old Fibre Plans 	
+GTT Fibre 100	11167
+GTT Fibre 50	11166
+GTT Fibre 150	11186
+GTT Fibre 5	11425
+GTT Fibre 10	11426
+GTT Fibre 5+	11467
+GTT Fibre 50+	11468
+GTT Fibre 100+	11469
+GTT Fibre 150+	11470
+NEW Fibre+ Plans 	
+GTT Fibre 100+	11529
+GTT Fibre 200+	11530
+GTT Fibre 300+	11531

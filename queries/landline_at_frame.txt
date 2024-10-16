@@ -1,0 +1,43 @@
+select 
+        e.account_no,
+        a.proci_ref "Service_Order_id",
+       d.order_number,
+       c.subscr_no,
+       to_char(c.create_Dt, 'YYYY-MM-DD') create_Dt,
+       to_char(c.complete_dt, 'YYYY-MM-DD') complete_dt,
+       to_char(b.lu_date, 'YYYY-MM-DD') "AssignedDate",
+       (c.complete_dt - c.create_Dt) duration_days,
+       (select display_external_id
+          from subscriber_key@read_cust1
+         where subscr_no = c.subscr_no) MSISDN,
+       b.name,
+       --(select TO_CHAR (wp_user_data.var_cvalue) from wp_user_data where proci_id=a.proci_id and var_name like 'Exchange%' and data_type=2 and rownum<2 )
+       TO_CHAR(wp.var_cvalue) "AssignedFrameEngineer",
+       a.proci_id
+  from cbs_owner.wp_user_data            wp, --wp_proci a,
+       cbs_owner.wp_proci                a,
+       cbs_owner.wp_proci_node           b,
+       ord_service_order@read_cust1 c,
+       ord_order@read_cust1         d,
+       cmf@read_cust1               e
+where a.proci_ref = to_char(c.service_order_id)
+   and c.order_status_id not in (90, 10, 50) --Added complete, dependent
+   and c.is_service_level = 1
+   and c.wp_process_id = 'GTTWLH'
+   and c.create_who not in ('rmarsumali', 'csm_user', 'csmuser')
+   and trunc(c.create_dt) between to_date('2022-05-01','YYYY-MM-DD') and to_date('2022-07-31','YYYY-MM-DD')
+      
+      --and trunc(c.create_dt)<=trunc(sysdate)
+   and a.proci_id = b.proci_id
+   and wp.proci_id = a.proci_id
+  and c.order_id = d.order_id
+   and e.account_no = c.account_no
+   and b.name in ('WL-FE Jumper at Frame','WL-fe connect Subscriber', 'WireLine Facility') -- by node
+      --and b.node_state_id=2
+   and a.proc_state_id != 5
+   and (b.node_state_id = 2 or
+       (b.node_state_id = 3 and b.completion_code = 60))
+   and b.node_type_id in (2, 6, 7)
+   and var_name like 'AssignedFrameEng%'
+   and data_type = 2
+order by TO_CHAR(wp.var_cvalue)

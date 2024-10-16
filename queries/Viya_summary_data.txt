@@ -1,0 +1,99 @@
+SELECT 
+	X.ROUTE_DATE,
+	NAME,
+	job_dispatched,
+	X.activitytype,
+	(total_job - job_dispatched ) pick_up,
+	in_progress,
+	completed,
+	pending,
+	IFF((job_dispatched + pick_up) = completed, 'COMPLETE', 'INCOMPLETE') EOD_UPDATE ,
+	round((completed + 5 * 0.75 * (Bucket_truck+INFT_Internet_Field_Tech+Supervisor+Missed_Appointment+No_Access+TCO_STT_Construction+XCO_STX_Construction+C_Wire+Video_Engineering+NETWORK+
+	Outside_Plant_Engineering+Central_Office_Engineering+Major_Outage))/job_dispatched,2) * 100 AS weighted_complete,
+	No_Access,
+	Bucket_truck,
+	C_Wire,
+	 INFT_Internet_Field_Tech,
+	 Supervisor,
+	Missed_Appointment,  
+    TCO_STT_Construction,
+    XCO_STX_Construction,	
+	Video_Engineering,
+	Network,
+	Outside_Plant_Engineering,
+	Central_Office_Engineering,
+	Major_Outage,
+	round((5 * 0.75 * (Bucket_truck+INFT_Internet_Field_Tech+Supervisor+Missed_Appointment+No_Access+TCO_STT_Construction+XCO_STX_Construction+C_Wire+Video_Engineering+NETWORK+
+	Outside_Plant_Engineering+Central_Office_Engineering+Major_Outage))/job_dispatched,2)  AS W_NOTDONE,
+	
+	iff(round(((5 * 0.75 * (Bucket_truck+INFT_Internet_Field_Tech+Supervisor+Missed_Appointment+No_Access+TCO_STT_Construction+XCO_STX_Construction+C_Wire+Video_Engineering+NETWORK+
+	Outside_Plant_Engineering+Central_Office_Engineering+Major_Outage))/job_dispatched) / (job_dispatched+pick_up ), 2) = 0,NULL,  
+	
+	round(((5 * 0.75 * (Bucket_truck+INFT_Internet_Field_Tech+Supervisor+Missed_Appointment+No_Access+TCO_STT_Construction+XCO_STX_Construction+C_Wire+Video_Engineering+NETWORK+
+	Outside_Plant_Engineering+Central_Office_Engineering+Major_Outage))/job_dispatched) / (job_dispatched ), 2)
+	)NOTDONE_PER
+	
+	
+FROM 
+	(
+	SELECT 
+	act.ROUTE_DATE
+	, res.NAME
+	,act.activitytype
+	,act.RESOURCEID
+	,count(0) AS total_job
+	, count(CASE WHEN act.status = 'started' THEN 1 END) in_progress
+	,count(CASE WHEN act.status = 'completed' THEN 1 END) completed
+	,count(CASE WHEN act.status = 'pending' THEN 1 END) pending
+	--,count(0) EOD_UPDATE
+	--,count(0) weighted_complete
+	--,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='k' THEN 1 END) "No Access"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='g' THEN 1 END) "WIRING/CONDUIT"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='3' THEN 1 END) _3
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='5' THEN 1 END) "Pending Install"
+	--,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='m' THEN 1 END) "Missed Appointment"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='f' THEN 1 END) _f
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='F' THEN 1 END) "Construction"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='J' THEN 1 END) "CO Engineering"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='O' THEN 1 END) "Outside Plant/Engineering"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='1' THEN 1 END) "CSR Customer Service"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='y' THEN 1 END) "TCO"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='I/R Bucket Truck' THEN 1 END) "Bucket truck - STT"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='STX I/R Bucket Truck' THEN 1 END) "Bucket truck - STX"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='Construction' THEN 1 END) "Construction"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='CSR Customer Service' THEN 1 END) "CSR Customer Service"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='CO Engineering' THEN 1 END) "CO Engineering"
+	--,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='No Access' THEN 1 END) "No Access"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='Outside Plant / Engineering' THEN 1 END) "Outside Plant / Engineering"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='Pending Install' THEN 1 END) "Pending Install"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='Wiring / Conduit' THEN 1 END) "Wiring / Conduit"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='Bucket-truck' THEN 1 END) "Bucket-truck"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='XCO' THEN 1 END) "XCO"
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_orderStatus='TCO' THEN 1 END) "TCO"
+	
+	---------------------------------------
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_workGroup='Bucket truck' THEN 1 END) Bucket_truck
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_workGroup='INFT-Internet Field Tech' THEN 1 END) INFT_Internet_Field_Tech
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_workGroup='Supervisor' THEN 1 END) Supervisor
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_workGroup='MIS' THEN 1 END) Missed_Appointment
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_workGroup='NOA' THEN 1 END) No_Access
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_workGroup='TCO - STT Construction' THEN 1 END) TCO_STT_Construction
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_workGroup='XCO - STX Construction' THEN 1 END) XCO_STX_Construction
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_workGroup='C-Wire' THEN 1 END) C_Wire
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_workGroup='Video Engineering' THEN 1 END) Video_Engineering
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_workGroup='Network' THEN 1 END) Network
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_workGroup='Outside Plant Engineering' THEN 1 END) Outside_Plant_Engineering
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_workGroup='Central Office Engineering' THEN 1 END) Central_Office_Engineering
+	,count(CASE WHEN VI_NOT_DONE_REASON = 'EICV' AND vi_workGroup='Major Outage' THEN 1 END) Major_Outage
+	
+	
+	FROM 
+	ATNI_DEV.GTT_REPORTING.VIYA_OFSC_ACTIVITIES act
+	LEFT JOIN ATNI_DEV.GTT_REPORTING.VIYA_OFSC_RESOURCES res 
+		ON act.RESOURCEID =  res.RESOURCEID
+	
+	
+	GROUP BY 1,2,3,4
+	) X
+	LEFT JOIN (SELECT ROUTE_DATE, RESOURCEID,activitytype, count(1) AS job_dispatched   FROM ATNI_DEV.GTT_REPORTING.VIYA_OFSC_ACTIVITIES_DAILY GROUP BY 1,2,3) act_d 
+	ON date(X.ROUTE_DATE) = date(act_d.ROUTE_DATE) AND X.RESOURCEID =  act_d.RESOURCEID AND X.activitytype =  act_d.activitytype

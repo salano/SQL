@@ -1,0 +1,44 @@
+select
+    DISTINCT
+	POINT_TARGET,
+	POINT_ORIGIN,
+	case when POINT_TARGET in ('5922311166','5922267480 ') then 'Incoming'
+         when POINT_ORIGIN in ('5922311166','5922267480 ') then 'Outgoing' 
+	end call_flow,
+	case when POINT_TARGET in ('5922311166','5922267480 ') and substr(POINT_ORIGIN, 1, 6) in (select PREFIX_LONG from DIGICEL_PREFIXES) then 'Incoming DIGICEL Mobile'
+		when POINT_ORIGIN in ('5922311166','5922267480 ') and substr(POINT_TARGET, 1, 6) in (select PREFIX_LONG from DIGICEL_PREFIXES) then 'Outgoing DIGICEL Mobile'
+		
+		when POINT_TARGET in ('5922311166','5922267480 ') and substr(POINT_ORIGIN, 1, 6) in (select PREFIX_LONG from GTT_PREFIXES) then 'Incoming GTT Mobile'
+		when POINT_ORIGIN in ('5922311166','5922267480 ') and substr(POINT_TARGET, 1, 6) in (select PREFIX_LONG from GTT_PREFIXES) then 'Outgoing GTT Mobile'
+		
+		
+		when POINT_TARGET in ('5922311166','5922267480 ') and in_eip.EXTERNAL_ID_TYPE = 9 then 'Incoming Landline'
+		when POINT_ORIGIN in ('5922311166','5922267480 ') and out_eip.EXTERNAL_ID_TYPE = 9 then 'Outgoing Landline'
+		
+		when POINT_TARGET in ('5922311166','5922267480 ') and in_eip.EXTERNAL_ID_TYPE in (37, 39) then 'Incoming Blaze'
+		when POINT_ORIGIN in ('5922311166','5922267480 ') and out_eip.EXTERNAL_ID_TYPE in (37, 39) then 'Outgoing Blaze'
+		Else
+			'Other'
+		END Call_flow_det,
+		TRANS_DT Call_StartTime, 
+		PRIMARY_UNITS duration_sec, 
+		RATED_UNITS, 
+		AMOUNT, 
+		TOTAL_TAX,
+		CHARGED_AMOUNT,
+		APPLICATION_ID 
+
+from 
+	CDR_DATA C LEFT JOIN
+	ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT out_eip on c.POINT_ORIGIN = out_eip.EXTERNAL_ID LEFT JOIN
+	ADMIN.EXTERNAL_ID_EQUIP_MAP_EXTRACT in_eip on c.POINT_TARGET = in_eip.EXTERNAL_ID
+where 
+	C.ACCOUNT_NO in (
+	'21917356',
+	'21583688'
+	) AND
+	date(C.TRANS_DT) between '20200821'::date and date(current_date) AND
+	out_eip.EXTRACT_FILE_DATE = to_char(current_date, 'yyyyMMdd') AND
+	in_eip.EXTRACT_FILE_DATE = to_char(current_date, 'yyyyMMdd')
+	
+order by POINT_TARGET, C.TRANS_DT

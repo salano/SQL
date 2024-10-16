@@ -1,0 +1,99 @@
+AND A.OFFER_ID IN( 
+							SELECT
+							REPLACE(PRODUCTSCODE,'MP','') as offers
+							FROM
+							SAA_PROD..DIMPRODUCTS
+							WHERE
+							GEN03LEVELNAME LIKE '%GPON Data%'
+							AND PRODUCTSCODE NOT LIKE 'RC%'
+							union 
+							select '11224' as offers
+							from SAA_PROD..DIMPRODUCTS
+		                 )
+						 
+						 
+---------------------------------------------------------------------
+select
+sub1.*,
+ A.OFFER_ID,
+ O.DISPLAY_VALUE,
+ A.OFFER_TYPE,
+ CASE when A.OFFER_TYPE = 2 then 'Primary Offer'
+      else
+	     'Supplementary offer'
+end OFFER,
+A.active_dt AS offer_date
+
+from
+
+(
+
+select 
+  distinct
+  c.ACCOUNT_NO,
+  a.SUBSCR_NO,
+  BILL_FNAME,BILL_LNAME, BILL_COMPANY,
+BILL_ADDRESS1,BILL_ADDRESS2, BILL_ADDRESS3, BILL_ADDRESS4, BILL_CITY, BILL_STATE, BILL_ZIP, BILL_COUNTY,
+   CUST_EMAIL Email,
+  CUST_PHONE1 ,CUST_PHONE2,
+  CONTACT1_PHONE,CONTACT2_PHONE
+ 
+FROM
+		GTT_REPORTING.OFFER_INST A
+		INNER JOIN
+		GTT_REPORTING.OFFER_VALUES O ON A.OFFER_ID=O.OFFER_ID AND RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM GTT_REPORTING.OFFER_VALUES)
+		LEFT JOIN
+		 GTT_REPORTING.CMF_EXTRACT C ON A.ACCOUNT_NO = C.ACCOUNT_NO
+	WHERE
+		DATE(A.EFFECTIVE_DT)<=CURRENT_DATE 
+        AND DATE(A.EXPIRY_DT)>CURRENT_DATE
+		AND A.INACTIVE_DT IS NULL 
+		--AND (UPPER(BILL_ADDRESS1 || BILL_ADDRESS2 || BILL_ADDRESS3 || BILL_ADDRESS4) like '%GROVE%') 
+		AND A.OFFER_TYPE in (2,3) -- PRIMARY OFFER
+		AND A.ACCOUNT_NO <> 0
+		AND A.OFFER_ID IN( 
+							
+								   SELECT
+									REPLACE(PRODUCTCODE,'MP','') as offers
+									FROM
+									SC_OUTPUT.DIMPRODUCT
+									WHERE
+									GEN03LEVELNAME LIKE '%Internet%'
+									AND PRODUCTCODE NOT LIKE 'RC%'
+									AND SOURCESYSTEMID = 1
+									union
+									select '11224' as offers
+									from SC_OUTPUT.DIMPRODUCT 	
+									WHERE SOURCESYSTEMID = 1
+		                 )
+			AND A.SUBSCR_NO IN( 
+								SELECT
+								    DISTINCT 								   
+								    C.SUBSCR_NO        
+								FROM          
+								          
+								    SC_INPUT.ODSSUBSCRIBERSNAPSHOT A
+								    INNER JOIN SC_OUTPUT.DIMPRODUCT B ON
+								                                            A.RATEPLANCODE::STRING = B.PRODUCTCODE
+								                                            --AND B.LEAFLEVELNAME ='Mobile Prepaid Combo'
+								                                            AND B.SOURCESYSTEMID = 1
+								                                            AND B.REVENUECOUNTABLE = 1
+								    INNER JOIN GTT_REPORTING.GTT_SAA_SUBSCRIBER_FEED_DETAIL  C ON  ---GET SUBSCR_NO
+								                                                               A.ACCOUNTNUMBER=C.ACCOUNTNUMBER AND A.BID=C.BID 
+								                                                               AND C.DATESTART = current_Date()-1
+								   
+								    
+								    WHERE
+								    A.SOURCESYSTEMID = 1
+								    AND A.DATESTART = current_Date()-1
+								    AND A.SYSTEMID = 24
+								    AND A.STATUSCODE NOT IN('D','P')
+								    AND A.CUSTOMERTYPE NOT IN(12, 8)
+						 ) 	
+        AND  date(c.EXTRACT_FILE_DATE) = date(current_date)
+)
+ sub1 left join GTT_REPORTING.OFFER_INST A ON sub1.SUBSCR_NO = A.SUBSCR_NO AND  A.INACTIVE_DT IS NULL and IS_CURRENTLY_IN_DB = 'Y'
+ INNER JOIN
+		GTT_REPORTING.OFFER_VALUES O ON A.OFFER_ID=O.OFFER_ID AND RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM GTT_REPORTING.OFFER_VALUES)
+ 
+ORDER BY 1,	10

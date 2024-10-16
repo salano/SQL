@@ -1,0 +1,22 @@
+select
+--O.DISPLAY_VALUE,
+    distinct
+	  c.ACCOUNT_NO,
+	  a.SUBSCR_NO,
+	  A.COMPLETE_DT AS install_date
+	  ,
+	  C.BILL_FNAME,C.BILL_LNAME, C.BILL_COMPANY,
+	  C.BILL_ADDRESS1,C.BILL_ADDRESS2, C.BILL_ADDRESS3, C.BILL_ADDRESS4, C.BILL_CITY, C.BILL_STATE, C.BILL_ZIP, C.BILL_COUNTY,
+	  C.CUST_EMAIL Email,
+	  C.CUST_PHONE1 ,C.CUST_PHONE2,
+	  C.CONTACT1_PHONE,C.CONTACT2_PHONE,
+       to_char(A.COMPLETE_DT, 'YYYY-MM') install_month
+from  
+    ord_service_order A
+    --INNER JOIN
+			--OFFER_VALUES O ON A.PRIMARY_OFFER_ID=O.OFFER_ID AND RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM OFFER_VALUES)
+    inner JOIN CMF C on A.account_no = c.account_no
+where 
+    service_Order_Type_id = 10 
+    and order_status_id=80 
+    and trunc(complete_dt) between to_date('2021-01-01','YYYY-MM-DD') and to_date('2021-12-31','YYYY-MM-DD');

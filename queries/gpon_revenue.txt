@@ -1,0 +1,98 @@
+SELECT 
+     to_char(TRANS_DATE, 'YYYY-MM') as trans_mth,
+     D.lcp_code,
+     round(sum(CASE WHEN E.external_ID_TYPE = 37 THEN AMOUNT / 100  ELSE 0 END),2) GPON_revenue
+     --round(sum(AMOUNT / 100),2) GPON_revenue
+
+    
+FROM 
+	BILL_INVOICE_DETAIL A
+
+	LEFT JOIN 
+		BILL_INVOICE C ON A.BILL_REF_NO = C.BILL_REF_NO 
+	
+	LEFT JOIN 
+		EXTERNAL_ID_EQUIP_MAP@read_main1 E on C.ACCOUNT_NO = E.ACCOUNT_NO 
+    LEFT JOIN 
+		(select a.*,
+            extractvalue(e.extended_data,
+            'ExtendedData/Parameter[@name="Application Reference Number"]/StringValue') as application_id,
+            extractvalue(e.extended_data,
+            'ExtendedData/Parameter[@name="LCP Code"]/StringValue') as lcp_code
+
+            from subscriber_view a join subscriber_ext e on  a.view_id = e.view_id
+    ) D ON E.SUBSCR_NO = D.SUBSCR_NO
+WHERE	
+	E.external_ID_TYPE IN (37) AND
+	A.TYPE_CODE IN (7, 2) AND
+
+	trunc(A.TRANS_DATE) BETWEEN TO_date('2020-06-30','YYYY-MM-DD') AND TO_date('2020-12-31','YYYY-MM-DD')
+GROUP BY 
+	 to_char(TRANS_DATE, 'YYYY-MM'), 
+     D.lcp_code
+ORDER BY 
+	to_char(TRANS_DATE, 'YYYY-MM'), 
+     D.lcp_code
+	 
+	 -----------------------------------------------------------------------
+	 create table tmp_gpon_customers as
+select 
+SUBSCR_NO
+from
+EXTERNAL_ID_EQUIP_MAP@read_main1
+WHERE	
+	external_ID_TYPE IN (37);
+-----------------------------------------------------------
+create table tmp_gpon_customers_1 as
+select 
+    a.view_id,
+    a.subscr_no
+from 
+    subscriber_view a 
+    join tmp_gpon_customers b
+    on a.subscr_no = b.subscr_no;
+    
+----------------------------------------
+create table tmp_gpon_customers_2 as
+select
+    b.view_id,
+    b.subscr_no,
+extractvalue(A.extended_data,
+            'ExtendedData/Parameter[@name="LCP Code"]/StringValue') as lcp_code
+from 
+    subscriber_ext A
+    join tmp_gpon_customers_1 b
+    on  b.view_id = a.view_id;
+    
+---------------------------------------------------
+SELECT 
+     to_char(ADD_MONTHS(C.STATEMENT_DATE, -1), 'YYYY-MM') as trans_mth,
+     D.lcp_code,
+     round(sum(CASE WHEN E.external_ID_TYPE = 37 THEN AMOUNT / 100  ELSE 0 END),2) GPON_revenue
+     --round(sum(AMOUNT / 100),2) GPON_revenue
+
+    
+FROM 
+	BILL_INVOICE_DETAIL A
+
+	LEFT JOIN 
+		BILL_INVOICE C ON A.BILL_REF_NO = C.BILL_REF_NO 
+	
+	LEFT JOIN 
+		EXTERNAL_ID_EQUIP_MAP@read_main1 E on C.ACCOUNT_NO = E.ACCOUNT_NO 
+    LEFT JOIN 
+		tmp_gpon_customers_2 D ON E.SUBSCR_NO = D.SUBSCR_NO
+WHERE	
+	E.external_ID_TYPE IN (37) AND
+	A.TYPE_CODE IN (7, 2) AND
+
+	trunc(C.STATEMENT_DATE)  BETWEEN TO_date('2020-08-01','YYYY-MM-DD') AND TO_date('2021-01-01','YYYY-MM-DD') and 
+    --D.SUBSCR_NO in ('3283117','3283118','3283107') AND
+     c.prep_status = 1 and
+     c.prep_error_code is null
+GROUP BY 
+	 to_char(ADD_MONTHS(C.STATEMENT_DATE, -1), 'YYYY-MM'), 
+     D.lcp_code
+ORDER BY 
+	to_char(ADD_MONTHS(C.STATEMENT_DATE, -1), 'YYYY-MM'), 
+     D.lcp_code

@@ -1,0 +1,73 @@
+tran_line_cube.line_description like "%TOPUP" or tran_line_cube.line_description like "%BILL%"
+
+
+###Top up only
+SELECT 
+    date_format(FROM_UNIXTIME(tran_header_cube.tran_date), '%Y-%m-%d %H:%i:%s') as Request_Date,
+	date_format(FROM_UNIXTIME(tran_header_cube.tran_date), '%Y-%m-%d %H:%i:%s') as Response_Date,
+    date_format(FROM_UNIXTIME(tran_header_cube.tran_date), '%Y-%m-%d %H:%i:%s') as trans_date,
+    CONCAT(tran_header_cube.series,tran_header_cube.folio_number) as Series_Folio,
+    csy_mbrc_cube.mbrc_name as Branch,
+    tran_header_cube.clerk_id as Agent,
+    tran_line_cube.line_description as Transaction_Type,
+    tran_line_cube.total_selling as Amount,
+    cps_payment_log_cube.mms_tran_id as TransactionID,
+    tran_header_cube.client_id as RMS_C1_ACCOUNT_NO,
+    "Success" as Sataus,
+    0 as Response_Code,
+    "Success" as Response_Text,
+    IF(tran_header_cube.void_status = 'V', 'VOID', 'APPLIED') AS Void_Status
+FROM tran_header_cube
+JOIN dealers on dealers.dealer_tag = tran_header_cube.dealer_tag
+JOIN csy_mbrc_cube on csy_mbrc_cube.mbrc_branch = tran_header_cube.branch_id AND csy_mbrc_cube.dealer_tag = tran_header_cube.dealer_tag
+JOIN csy_acl_cube on csy_acl_cube.clerk =  tran_header_cube.clerk_id AND csy_acl_cube.dealer_tag =  tran_header_cube.dealer_tag
+JOIN tran_line_cube on tran_header_cube.id = tran_line_cube.tran_header_id and tran_header_cube.dealer_tag = tran_line_cube.dealer_tag
+JOIN tran_line_item_cube on tran_line_cube.id = tran_line_item_cube.tran_line_id and tran_line_cube.dealer_tag = tran_line_item_cube.dealer_tag
+LEFT OUTER JOIN cps_payment_log_cube on tran_header_cube.series = cps_payment_log_cube.series and tran_header_cube.folio_number = cps_payment_log_cube.fol_number and tran_header_cube.dealer_tag = cps_payment_log_cube.dealer_tag and cps_payment_log_cube.comments = tran_line_cube.sale_item_line
+WHERE 
+    CASE 1 # Transaction filter        
+        WHEN 2 THEN tran_line_cube.line_description like "%TOPUP%"
+        WHEN 3 THEN tran_line_cube.line_description like "%BILL%"
+        ELSE (tran_line_cube.line_description like "%TOPUP" )
+    END  
+    AND date(from_unixtime(tran_header_cube.tran_date))  BETWEEN CURDATE() - INTERVAL 3 DAY AND CURDATE()
+	
+
+ORDER BY
+  tran_header_cube.id
+  
+##Bill payment only  
+  
+ SELECT 
+    date_format(FROM_UNIXTIME(tran_header_cube.tran_date), '%Y-%m-%d %H:%i:%s') as Request_Date,
+	date_format(FROM_UNIXTIME(tran_header_cube.tran_date), '%Y-%m-%d %H:%i:%s') as Response_Date,
+    date_format(FROM_UNIXTIME(tran_header_cube.tran_date), '%Y-%m-%d %H:%i:%s') as trans_date,
+    CONCAT(tran_header_cube.series,tran_header_cube.folio_number) as Series_Folio,
+    csy_mbrc_cube.mbrc_name as Branch,
+    tran_header_cube.clerk_id as Agent,
+    tran_line_cube.line_description as Transaction_Type,
+    tran_line_cube.total_selling as Amount,
+    cps_payment_log_cube.mms_tran_id as TransactionID,
+    tran_header_cube.client_id as RMS_C1_ACCOUNT_NO,
+    "Success" as Sataus,
+    0 as Response_Code,
+    "Success" as Response_Text,
+    IF(tran_header_cube.void_status = 'V', 'VOID', 'APPLIED') AS Void_Status
+FROM tran_header_cube
+JOIN dealers on dealers.dealer_tag = tran_header_cube.dealer_tag
+JOIN csy_mbrc_cube on csy_mbrc_cube.mbrc_branch = tran_header_cube.branch_id AND csy_mbrc_cube.dealer_tag = tran_header_cube.dealer_tag
+JOIN csy_acl_cube on csy_acl_cube.clerk =  tran_header_cube.clerk_id AND csy_acl_cube.dealer_tag =  tran_header_cube.dealer_tag
+JOIN tran_line_cube on tran_header_cube.id = tran_line_cube.tran_header_id and tran_header_cube.dealer_tag = tran_line_cube.dealer_tag
+JOIN tran_line_item_cube on tran_line_cube.id = tran_line_item_cube.tran_line_id and tran_line_cube.dealer_tag = tran_line_item_cube.dealer_tag
+LEFT OUTER JOIN cps_payment_log_cube on tran_header_cube.series = cps_payment_log_cube.series and tran_header_cube.folio_number = cps_payment_log_cube.fol_number and tran_header_cube.dealer_tag = cps_payment_log_cube.dealer_tag and cps_payment_log_cube.comments = tran_line_cube.sale_item_line
+WHERE 
+    CASE 1 # Transaction filter        
+        WHEN 2 THEN tran_line_cube.line_description like "%TOPUP%"
+        WHEN 3 THEN tran_line_cube.line_description like "%BILL%"
+        ELSE (tran_line_cube.line_description like "%BILL" )
+    END  
+    AND date(from_unixtime(tran_header_cube.tran_date))  BETWEEN CURDATE() - INTERVAL 3 DAY AND CURDATE()
+	
+
+ORDER BY
+  tran_header_cube.id

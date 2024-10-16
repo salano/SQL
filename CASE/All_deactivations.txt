@@ -1,0 +1,42 @@
+SELECT 
+    e.ACCOUNT_NO
+    ,e.EXTERNAL_ID
+    ,CASE
+     WHEN e.EXTERNAL_ID_TYPE = 9 THEN 'Landline'
+       WHEN e.EXTERNAL_ID_TYPE = 11 THEN 'DSL'
+         WHEN e.EXTERNAL_ID_TYPE = 1 THEN 'Mobile'
+         WHEN e.EXTERNAL_ID_TYPE = 27 THEN 'Leased Line'
+       WHEN e.EXTERNAL_ID_TYPE in (37,39) THEN 'Blaze'
+       ELSE 'Unknown'
+    END SERVICE_CATEGORY
+    ,SRV.DISPLAY_VALUE AS DISCONNECTION_TYPE
+    ,DRV.DISPLAY_VALUE DISCONNECTION_REASON
+    ,oso.service_order_id
+    ,oso.order_id
+    ,oso.order_status_id
+    ,oso.create_dt
+    
+    
+FROM   
+    SUBSCRIBER_STATUS a
+					
+    JOIN  ( SELECT SUBSCR_NO,  max(INACTIVE_DT) INACTIVE_DT FROM SUBSCRIBER_STATUS WHERE  trunc(INACTIVE_DT) >= to_date('2021-11-12','YYYY-MM-DD')   GROUP BY SUBSCR_NO) b 
+					ON a.SUBSCR_NO = b.SUBSCR_NO AND a.INACTIVE_DT = b.INACTIVE_DT 
+                    
+    left join OFFER_INST@read_main1 ins
+         on a.SUBSCR_NO = ins.SUBSCR_NO and trunc(a.INACTIVE_DT) = trunc(ins.INACTIVE_DT) 
+    left join ord_service_order oso 
+        on a.subscr_no = a.subscr_no
+    left join DISCONNECT_REASON_VALUES DRV
+        on ins.disconnect_reason = DRV.disconnect_reason
+    left join STATUS_REASON_VALUES SRV
+	   		on a.STATUS_REASON_ID = srv.STATUS_REASON_ID
+    left join EXTERNAL_ID_EQUIP_MAP@read_main1 E
+        ON a.SUBSCR_NO = e.SUBSCR_NO AND a.INACTIVE_DT = e.INACTIVE_DATE 
+        
+where 
+    trunc(oso.complete_dt) >= to_date('2021-11-12','YYYY-MM-DD') 
+    and trunc(ins.INACTIVE_DT) >= to_date('2021-11-12','YYYY-MM-DD')
+    and trunc(a.INACTIVE_DT) >= to_date('2021-11-12','YYYY-MM-DD') 
+    and trunc(e.INACTIVE_DATE) >= to_date('2021-11-12','YYYY-MM-DD') 
+    and ins.offer_type = 2

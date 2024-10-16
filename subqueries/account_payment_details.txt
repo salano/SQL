@@ -1,0 +1,111 @@
+SELECT distinct
+  
+  tmp.account_no,
+  tmp.subscr_no, 
+  fsan.external_id fsan,      
+  lcp.lcp,  
+  r1.trans_date, 
+  r1.post_date,--
+--  r1.trans_source,
+  r1.pay_source,
+--  r1.description_text,
+  round(r1.payments,2) as payment_amount,
+  r1.annotation,
+  r1.bill_ref_no,
+  r1.c1_status,
+  round(bal.balance_due,2) balance_due
+  
+FROM atni_dev.gtt_reporting.tmp_disconnect_202311 tmp
+LEFT JOIN(
+      SELECT 
+        distinct
+            B.ACCOUNT_NO,
+        TRANS_DATE AS TRANS_DATE, 
+        POST_DATE AS POST_DATE, 
+        B.TRANS_SOURCE, 
+        TSV.DISPLAY_VALUE AS PAY_SOURCE, 
+        B.BMF_TRANS_TYPE,
+        B.TRANS_SUBMITTER,
+        DESCRIPTION_TEXT, 
+        (TRANS_AMOUNT/100) AS PAYMENTS,
+        B.ANNOTATION,
+        B.BILL_REF_NO, 
+        CASE WHEN B.ACTION_CODE = 'APP' THEN 'APPLIED'
+           WHEN B.ACTION_CODE = 'DEL' THEN 'VOID'
+           WHEN B.ACTION_CODE = 'REV' THEN 'REVERSE'
+     END C1_STATUS,
+       B.EXTERNAL_CURRENCY as currency_code,
+       B.TRACKING_ID
+    FROM ATNI_PROD.GTT_REPORTING.BMF_extract B
+    LEFT JOIN ATNI_PROD.GTT_REPORTING.TRANS_SOURCE_VALUES TSV
+    ON B.TRANS_SOURCE = TSV.TRANS_SOURCE
+       and date(B.EXTRACT_FILE_DATE) = current_date - 2
+    LEFT JOIN ATNI_PROD.GTT_REPORTING.BMF_TRANS_DESCR BTD
+        ON B.BMF_TRANS_TYPE = BTD.BMF_TRANS_TYPE
+    LEFT JOIN ATNI_PROD.GTT_REPORTING.DESCRIPTIONS DS
+        ON BTD.DESCRIPTION_CODE = DS.DESCRIPTION_CODE
+
+    WHERE date(B.TRANS_DATE)  >= DATEADD(MONTH, -4,date_trunc('month', current_date))
+    --AND TRUNC(B.TRANS_DATE) = TO_CHAR(SYSDATE,'DD-MON-YYYY')
+     AND B.NO_BILL = 0 
+     AND B.TRANS_AMOUNT/100 > 2 AND B.BMF_TRANS_TYPE NOT IN(16,33,51,52,53,80,90)
+    -- AND bill_ref_no <> 0 
+     AND pay_source is not null
+    -- AND B.ACCOUNT_NO = 22404389
+    ORDER BY TRANS_DATE DESC
+   
+) r1
+ON tmp.account_no = r1.account_no
+AND r1.TRANS_DATE >= DATEADD(MONTH, -4,date_trunc('month', current_date))
+--where r1.account_no is not null
+
+left join (
+      SELECT DISTINCT 
+      ACCOUNT_NO,
+      --   MAX(PPDD_DATE) AS MAX_PPDD_DATE,
+      --   SUM(TOTAL_DUE) / 100 AS TOTAL_DUE,
+         SUM(BALANCE_DUE) / 100 AS BALANCE_DUE 
+
+      FROM ATNI_PROD.GTT_REPORTING.CMF_BALANCE 
+
+      WHERE account_no in (select distinct account_no from atni_dev.gtt_reporting.tmp_disconnect_202311)
+       and DATE(EFFECTIVE_DT) <= CURRENT_DATE AND DATE(EXPIRY_DT) > CURRENT_DATE 
+      GROUP BY 1
+) bal
+on tmp.account_no = bal.account_no
+
+LEFT JOIN ATNI_PROD.GTT_REPORTING.external_id_equip_map_extract ee
+ ON tmp.account_no = ee.account_no
+ AND external_id_type in (1,9,11,37)
+ AND is_current = 1
+ AND date(ee.extract_file_date) = current_date
+
+LEFT JOIN(
+    select account_number, lcp
+    from ATNI_PROD.GTT_REPORTING.GPON_SERVICE_NOW_ORDER_STATUS_EXTRACT
+    where date(extract_file_date) = current_date-1
+) lcp
+ON to_char(tmp.account_no) = lcp.account_number
+
+LEFT JOIN(
+       select r1.account_no, r2.external_id, r1.max_active_date, r2.inactive_date, r2.is_current
+        from(
+            select account_no, max(active_date) max_active_date
+            from ATNI_PROD.GTT_REPORTING.external_id_equip_map_extract ee
+            where external_id_type in (40)
+            and date(extract_file_date) = current_date
+            group by account_no
+        ) r1
+        left join(
+            select account_no, external_id, active_date, inactive_date, is_current
+            from ATNI_PROD.GTT_REPORTING.external_id_equip_map_extract ee
+            where external_id_type in (40)
+            and date(extract_file_date) = current_date
+        ) r2
+           on r1.account_no = r2.account_no
+           and r1.max_active_date = r2.active_date
+ ) fsan
+ ON tmp.account_no = fsan.account_no
+
+
+order by tmp.account_no

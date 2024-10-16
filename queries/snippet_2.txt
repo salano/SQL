@@ -1,0 +1,216 @@
+##########################################################################################
+        ## set connection variables for Inswitch Recharges
+        source_directory = "/DATA/gtt/inswitch/out_both/in"
+        ftp_dir = "/datain/gtt/trx/comverse/inswitch_recharge/"
+        file_pattern = [dateAndtime.strftime("%Y%m%d")]
+        feed_name="Inswitch Recharges"
+        #########################################################################################
+        pushFile(ftp_site,ftp_user,source_directory,ftp_dir,file_pattern,feed_name,dateAndtime.strftime("%Y%m%d"))
+
+
+
+ftp_site = "raftp.atni.com"
+ftp_user = "pusherGTTFTP"
+
+/datain/gtt/trx/comverse/inswitch_recharge/
+/datain/gtt/comverse_group/
+
+10.20.0.6
+Username - Switchcdr
+Password - 3edc#EDC
+
+/home/switchcdr/data/GGSN
+/home/switchcdr/data/SGSN/raw
+
+pyasn1 (0.1.9)
+
+
+
+boodie ==6231056
+sunil --6240630
+Anthony 624-1143
+610 2539
+mm 5029985/21942904
+
+
+/home/switch/bin/archive_tss_all.py
+
+40 * * * * /usr/bin/python /home/switch/bin/archive_tss_all.py &>  /dev/null
+
+/data/gtt/cloudera/TSS_ALL
+
+/DATA/gtt/commnet/tss/all/archive/
+
+find . -type d -size +4096c
+du -sm * | awk '$1 > 1024'
+
+https://share.atni.com/sites/sharedservices/Mediation/DataReporting/Team%20BAU%20work%20prioritization/Team%20Ticket%20Prioritrization%20and%20delivery%20schedule.xlsx?Web=1
+
+https://github.com/ATNI/azure-storage-test/blob/master/run.py
+
+/datain/gtt/comverse_group/
+/DATA/commnetus/aluaaa/castlerockco/archive/
+/data/commnet/cloudera/aluaaa/
+/data/commnet/cloudera/aluaaa_roam
+/data/gtt/cloudera/ericsson_mss/
+
+/data/MEDFTP/ericsson_GGSN/out
+ssh switch@172.27.250.188
+
+
+1901    cdrbil
+25496   cdrdat
+5618    cdrunb
+6591    cmfext
+7260    cusadj
+20149   cuscmf
+2605    cusppf
+17540   eeimx
+15490   emveit
+217429  ofrins
+
+
+find ofrins/in -type f -mtime +60 -exec rm -f {} \;
+
+find out -type f -mtime +30 -exec rm -f {} \;
+
+INC0049852
+RITM0022467
+
+
+SELECT
+   REPLACE(PRODUCTSCODE, 'MP','') AS  PRODUCTSCODE, PRODUCTSNAME
+   FROM
+   SAA_PROD..DIMPRODUCTS
+   WHERE
+   GEN03LEVELNAME='GPON Data'
+   AND PRODUCTSCODE LIKE 'MP%' 
+Scorecard GPON list
+   SELECT
+		*
+	FROM
+		OFFER_INST A
+		INNER JOIN
+		OFFER_VALUES O ON A.OFFER_ID=O.OFFER_ID AND RESELLER_VERSION_ID IN(SELECT MAX(RESELLER_VERSION_ID) FROM OFFER_VALUES)
+	WHERE
+		DATE(EFFECTIVE_DT)<=CURRENT_DATE 
+        AND DATE(EXPIRY_DT)>CURRENT_DATE
+		AND INACTIVE_DT IS NULL 
+		AND OFFER_TYPE=2 -- PRIMARY OFFER
+		AND SUBSCR_NO IN( SELECT 
+						 SUBSCR_NO
+						 FROM 
+						 EXTERNAL_ID_EQUIP_MAP
+						 WHERE
+						 EXTERNAL_ID_TYPE=11 --DSL
+						 AND DATE(EFFECTIVE_DT)<=CURRENT_DATE 
+						 AND DATE(EXPIRY_DT)>CURRENT_DATE
+						 AND INACTIVE_DATE IS NULL) 
+
+
+MMS receipt #
+
+
+GGSN
+2015 1823
+2016 145347
+2018 1927671
+2019 1152562
+2020 49064
+
+SGSN
+2015 5177
+2016 67972
+2017 71976
+2018 99206
+2019 52233
+2020 90559
+
+Genband
+
+2014 6508
+2015 14854
+2016 17088
+2017 16533
+2018 16941
+2019 17157
+2020 7446
+
+HLR
+
+out 1351
+2017 37
+2018 347
+2019 365
+2020 156
+
+Nortel
+29371
+
+sandvinewireless
+2018 36880
+2019 34871
+2020 15324
+
+
+comverse
+2020 67870
+
+
+Affirmpwg Denver
+2016 3680
+2017 33324
+2018 58752
+2019 58559
+2020 30684
+
+
+Affirmpwg las vegas
+2016 3892
+2017 16257
+2018 20239
+2019 37138
+2020 23321
+
+ZTEVOICE
+
+2016 101595
+2017 101059
+2018 96959
+2019 90587
+2020 54610
+
+ZTEUMTS 449333
+
+
+AAA -> zteaaa
+2015 584506
+2016 884307
+2017 740831
+2018 264739
+2019 215821
+2020 89979
+
+Aluaa -> cdmaaluaa1
+2019 97711
+2020 45894
+
+ALuaa_roam -> cdmaaluaa2
+2019 68113
+2020 28713
+
+lboodie skype
+19626814 - 
+
+yonette issue #126347
+TMP_CHARM_DISC
+
+scp -r switch@172.27.250.188:/data/gtt/cloudera/ericsson_mss/201705* .
+
+scp -r /DATA/scripts/azcopy switch@172.27.250.188:/data/azcopy
+/data/azcopy/azcopy/azcopy_linux_amd64_10.5.1
+azcopy cp "/data/commnet/cloudera/ztevoice/HARs/" "https://uscommnetcdrarchivefiles.blob.core.windows.net/ztevoice/?sv=2019-10-10&ss=bfqt&srt=sco&sp=rwdlacupx&se=2999-05-07T03:54:54Z&st=2020-05-06T19:54:54Z&spr=https&sig=7ZwYNoo6Rn3MgoYFKpgksD3xWK6WmvcK6B0aIXg03qQ%3D"  --recursive=true
+
+#Metric Dashboard
+https://dashboards.atni.com/#/site/GTT/views/SubscriberMetricDashboard/Overview?:iid=1
+

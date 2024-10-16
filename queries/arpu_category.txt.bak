@@ -1,0 +1,38 @@
+SELECT 
+    /*FCT_DT,
+    AR_ACTVN_DT,
+    MSISDN_DD,
+	arpu,*/
+	MSISDN_DD, 
+	ARPU_BRCKT,
+	count(1)
+FROM 
+	TOOVIO_MCR
+WHERE 
+	date(FCT_DT) >= add_months(date(current_date), -3)
+	and MSISDN_DD ='5926090157'
+GROUP BY 1,2;
+--------------------------------------------------------------------
+SELECT 
+
+   CASE WHEN freq = 'ARPU_A' THEN MSISDN_DD END ARPU_A,
+   CASE WHEN freq = 'ARPU_B' THEN MSISDN_DD END ARPU_B,
+   CASE WHEN freq = 'ARPU_C' THEN MSISDN_DD END ARPU_C,
+   CASE WHEN freq = 'ARPU_D' THEN MSISDN_DD END ARPU_D,
+   CASE WHEN freq = 'ARPU_E' THEN MSISDN_DD END ARPU_E,
+   CASE WHEN freq = 'ARPU_G' THEN MSISDN_DD END ARPU_G
+FROM
+(
+	SELECT 
+	
+	    MSISDN_DD,
+		mode(ARPU_BRCKT) AS freq
+	FROM 
+		TOOVIO_MCR
+	WHERE 
+		date(FCT_DT) >= add_months(date(current_date), -3)
+		and MSISDN_DD in (SELECT MSISDN_DD FROM ATNI_PROD.GTT_REPORTING.TOOVIO_MCR WHERE date(FCT_DT)=date(current_date) - 1 AND AR_ACTVN_DT IS NOT NULL)
+	GROUP BY MSISDN_DD
+	ORDER BY MSISDN_DD
+	)SUB
+;

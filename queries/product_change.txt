@@ -1,0 +1,93 @@
+select  
+
+     x.OFFER_ID,
+	 x.OFFER_NAME,
+	 x.SERVICE_TYPE,
+	 x.OFFER_TYPE, 
+	 x.PAYMENT_MODE, 
+	 x.CHARGE_ID, 
+	 x.CHARGE_TYPE, 
+	 x.CHARGE_NAME, 
+	 x.FREQUENCY, 
+	 x.CHARGE_RATE, 
+	 x.CURRENCY_CODE, 
+	 x.ALLOW_OVERRIDE_RATE, 
+	 x.IS_JNL, 
+	 x.IS_TAXABLE, 
+	 x.AWARDED_UNITS, 
+	 y.RESELLER_VERSION_ID, 
+	 --x.ACTIVE_DATE,
+	 --x.INACTIVE_DATE,
+     y.CHANGE_DATE
+
+ from (
+
+select  
+OFFER_ID,
+	 OFFER_NAME,
+	 SERVICE_TYPE,
+	 OFFER_TYPE, 
+	 PAYMENT_MODE, 
+	 CHARGE_ID, 
+	 CHARGE_TYPE, 
+	 CHARGE_NAME, 
+	 FREQUENCY, 
+	 CHARGE_RATE, 
+	 CURRENCY_CODE, 
+	 ALLOW_OVERRIDE_RATE, 
+	 IS_JNL, 
+	 IS_TAXABLE, 
+	 AWARDED_UNITS 
+	 --RESELLER_VERSION_ID 
+	 --ACTIVE_DATE,
+	 --INACTIVE_DATE
+from ATNI_PROD.GTT_REPORTING.PRODUCT_CHANGE
+where date(cdate) = to_date('2021-06-30', 'YYYY-MM-DD') --date(current_date - interval '1 day')
+
+
+EXCEPT
+select  
+OFFER_ID,
+	 OFFER_NAME,
+	 SERVICE_TYPE,
+	 OFFER_TYPE, 
+	 PAYMENT_MODE, 
+	 CHARGE_ID, 
+	 CHARGE_TYPE, 
+	 CHARGE_NAME, 
+	 FREQUENCY, 
+	 CHARGE_RATE, 
+	 CURRENCY_CODE, 
+	 ALLOW_OVERRIDE_RATE, 
+	 IS_JNL, 
+	 IS_TAXABLE, 
+	 AWARDED_UNITS 
+	 --RESELLER_VERSION_ID 
+	 --ACTIVE_DATE,
+	 --INACTIVE_DATE
+from ATNI_PROD.GTT_REPORTING.PRODUCT_CHANGE
+where date(cdate) = to_date('2021-06-01', 'YYYY-MM-DD')--date(current_date - interval '30 day')
+
+)  x  --order by x.OFFER_ID, x.CHARGE_ID
+ 
+join (
+
+select 
+  distinct
+  OFFER_ID,
+  CHARGE_ID,
+  RESELLER_VERSION_ID,
+  CHARGE_RATE,
+  CHARGE_TYPE,
+  AWARDED_UNITS,
+  PAYMENT_MODE,
+  FREQUENCY,
+  min(cdate) as CHANGE_DATE
+from 
+
+ATNI_PROD.GTT_REPORTING.PRODUCT_CHANGE
+where date(cdate) between to_date('2021-06-01', 'YYYY-MM-DD') AND to_date('2021-06-30', 'YYYY-MM-DD') /*date(current_date - interval '30 day')*/ and RESELLER_VERSION_ID = (select max(RESELLER_VERSION_ID) from ATNI_PROD.GTT_REPORTING.PRODUCT_CHANGE where date(cdate) between to_date('2021-06-01', 'YYYY-MM-DD') AND to_date('2021-06-30', 'YYYY-MM-DD')/*date(current_date - interval '30 day')*/)
+group by OFFER_ID,CHARGE_ID, RESELLER_VERSION_ID,  CHARGE_RATE, CHARGE_TYPE, AWARDED_UNITS,PAYMENT_MODE,FREQUENCY
+) y on
+ x.OFFER_ID = y.OFFER_ID and x.CHARGE_ID = y.CHARGE_ID  and x.CHARGE_RATE = y.CHARGE_RATE and x.CHARGE_TYPE = y.CHARGE_TYPE and x.AWARDED_UNITS = y.AWARDED_UNITS and x.PAYMENT_MODE = y.PAYMENT_MODE and x.FREQUENCY =y.FREQUENCY
+order by x.OFFER_ID, x.CHARGE_ID, y.RESELLER_VERSION_ID

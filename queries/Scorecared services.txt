@@ -1,0 +1,28 @@
+4	Mobile Hybrid Combo
+24	GPON
+18	WiMax Postpaid Phone
+4	Mobile Postpaid Data Only
+8	Regular Postpaid Landline Phone
+15	DIP
+15	DIA
+4	Mobile Postpaid Combo
+12	Broadband Prepaid Standard
+4	Mobile Postpaid SMS Only
+15	IPLC
+12	WiMax
+4	Fixed Wireless
+4	Mobile Prepaid Combo
+12	DSL
+
+
+
+SELECT 
+DISTINCT A.SYSTEMID, B.LEAFLEVELNAME
+ 
+ FROM 
+ SC_INPUT.ODSSUBSCRIBERSNAPSHOT A
+    INNER JOIN SC_OUTPUT.DIMPRODUCT B ON
+                                            A.RATEPLANCODE::STRING = B.PRODUCTCODE
+                                            --AND B.LEAFLEVELNAME ='Mobile Prepaid Combo'
+                                            AND B.SOURCESYSTEMID = 1
+                                            AND B.REVENUECOUNTABLE = 1

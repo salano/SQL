@@ -1,0 +1,88 @@
+SELECT
+*
+FROM(
+SELECT 
+header.id "header_id"
+, line.id  "line_id"
+, header.folio_number
+, header.series
+, branch.mbrc_name AS Branch
+, line.total_cost line_total_cost
+, concat(clerk.clerk, ' - ' , clerk.surname, ' ', clerk.first_name) cashier 
+, date_format(FROM_UNIXTIME(header.tran_date),'%Y-%m-%d') AS date_sold
+, hour(FROM_UNIXTIME(header.tran_date)) AS hour_sold
+, case when inventory.prd_type in ( 'ACC' , 'AH' , 'AM' ) then 'ACCESSORY SALE' 
+       when inventory.prd_type regexp '^P[0-9]+' then 'PHONE SALE'
+       when inventory.model_name is null and line.line_type not in('TEND','TAX1','TAX2') and line.line_description like 'MMG%' then 'MMG CASH OUT'
+       when inventory.model_name is null and line.line_type not in('TEND','TAX1','TAX2') and line.line_description like 'CHQ%' then 'EMPLOYEE CHQ'
+	   when inventory.model_name is null and line.line_type not in('TEND','TAX1','TAX2') and line.line_description like 'MM2%' then 'AGENT WITHDRAWAL'
+	   when inventory.model_name is null and line.line_type not in('TEND','TAX1','TAX2') and line.line_description like 'MM3%' then 'COUPON WITHDRAWAL'
+	   when inventory.model_name is null and item.department='XD4' then 'DISCOUNT'
+       else
+          inventory.model_name 
+   end "transaction_type"
+,  case 
+   when inventory.model_name is null then line.line_description
+   else
+     inventory.model_name
+   end "trans_type_unfiltered"
+, inventory.inv_number
+, case
+  when inventory.model_code is null and line.line_description like 'MMG%' then 'MOB MONEY'
+  when inventory.model_code is null and line.line_description like 'MM2%' then 'MOB MONEY'
+  when inventory.model_code is null and line.line_description like 'MM3%' then 'MOB MONEY'
+  when inventory.model_code is null and line.line_description like 'CHQ%' then 'EMPLOYEE CHQ'
+  when inventory.model_code is null and item.department='XD4' then 'DISCOUNT'
+  else
+      inventory.model_code
+  end as model_code
+, case
+  when inventory.prd_type is null and line.line_description like 'MMG%' then 'TMO'
+  when inventory.prd_type is null and line.line_description like 'MM2%' then 'TMO'
+  when inventory.prd_type is null and line.line_description like 'MM3%' then 'TMO'
+  when inventory.prd_type is null and line.line_description like 'CHQ%' then 'CHQ'
+  when inventory.prd_type is null and item.department='XD4' then 'XD'
+  else
+      inventory.prd_type
+  end as prd_type
+,line.total_selling  "line_total"
+,line.total_original 
+, case when header.client_id = 50 then 'Existing SIM' else 'New SIM' end Customer_Type
+, wcon.contract_number AS contract_number
+, serial.serial_number AS imei
+, header.client_id AS cli_number
+, void_status
+, item.qty return_type
+, case
+  when item.department is null and line.line_description like 'MMG%' then 'TMO'
+  when item.department is null and line.line_description like 'MM2%' then 'TMO'
+  when item.department is null and line.line_description like 'MM3%' then 'TMO'
+  when item.department is null and line.line_description like 'CHQ%' then 'CHQ'
+  else
+      item.department
+  end as department
+FROM
+    tran_header AS header
+        LEFT JOIN
+    tran_line AS line ON header.id = line.tran_header_id
+        LEFT JOIN
+    tran_line_serial AS serial ON line.id = serial.tran_line_id
+        LEFT JOIN
+    tran_line_item AS item ON line.id = item.tran_line_id
+        LEFT JOIN
+    csv_wcon AS wcon ON item.main_wcon_id = wcon.wcon_id
+        LEFT JOIN
+    car_cust AS cust ON wcon.cli_number = cust.cli_number
+        LEFT JOIN
+    csy_mbrc AS branch ON header.branch_id = branch.mbrc_branch
+        LEFT JOIN
+    cin_iven AS inventory ON item.inventory_id = inventory.inv_number
+        LEFT JOIN
+    csy_acl AS clerk ON header.clerk_id = clerk.clerk
+ WHERE
+  header.tran_date between unix_timestamp(date(curdate()) - interval 1 day) and unix_timestamp(date(curdate()) - interval 0 day)
+) AS Q
+WHERE
+length(transaction_type)>0
+
+		

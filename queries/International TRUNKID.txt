@@ -1,0 +1,42 @@
+TRUNKID FORMAT
+A0XXXXXXX
+
+Where A= 1 or 2		1 - The trunk was used for an INCOMING call
+			2 - The trunk was used for an OUTGOING call.
+
+XXXXXXX			This is the TRUNK ID NUMBER from list below
+
+For example 103600000 	Incoming call from IDTSIPIC
+	    203640000	Outgoing call to IDTSIPOG
+       
+
+	CIRCUIT NAME				TRUNK ID NUMBER		COMMENT
+        'GEOTOBET3'                              64			Circuit to Cable & Wireless Barbados
+        'GEOSURC7_30N'                           65			Circuit to Telesur Suriname
+        'GTTMCIPO'                               329			Circuit to MCI Pottstown
+        'GTTMCIPO2'                              333			Circuit to MCI Pottstown
+        'GEOSPRINTC730N'                         338			Circuit to Sprint USA
+        'GTTTSTTWCS'                             349			Circuit to TSTT Trinidad
+        'GTTCUAVAWCS'                            352			Circuit to TSTT Trinidad
+        'GEOATTPB'                               353			Circuit to AT&T
+        'GEOATTATL'                              357			Circuit to AT&T
+        'GTTSPRINTNY'                            359			Circuit to Sprint USA
+        'IDTSIPIC'                               360			Circuits to IDT
+        'IDTSIPOG'                               361			Circuits to IDT
+        'LIMESIP2W'                              363			Circuits to Lime (Cable & Wireless)
+        'TELCO214SIPOG'                          364			Circuits to Telco214
+        'TELCO214SIPIC'                          365			Circuits to Telco214
+        'ESSEXTELSIP2W'                          366			Circuits to Essextel
+        'GBLVOICESIP2W'                          367			Circuits to Global Voice
+        'GBLVOICESIPIC'                          368			Circuits to Global Voice
+        'VERIZONSIP2W'                           369			Circuits to Verizon
+        'TATASIPIC'                              370			Circuits to TATA
+        'TATASIPOG'                              371			Circuits to TATA
+        'ESSEXTELSIP'                            372			Circuits to Essextel
+        'TELESURSIP2W'                           373			Circuits to Telesur Suriname
+        'TELESURSIP'                             380			Circuits to Telesur Suriname
+
+
+	'GTTDIGICEL'				158			Circuits to DIGICEL
+	'PSTNTOMOB'				159			Circuits between Genband and GTT Mobile
+       

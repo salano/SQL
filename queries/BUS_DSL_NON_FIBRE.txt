@@ -1,0 +1,130 @@
+
+SELECT 
+* FROM 
+(
+	SELECT 
+	    DISTINCT
+		A.CCT_ID,
+		A.PHONE_NUMBER,
+		A.FULL_NAME,
+		A.SERVICE_NAME,
+		A.STATUS,
+		A.EXCHANGE,
+		A.DSL_START_TS,
+		--C.ACCOUNT_NO,
+		C.CUST_EMAIL Email,
+	    C.CUST_PHONE1,
+	    C.CUST_PHONE2,
+	    C.CONTACT1_PHONE,
+	    C.CONTACT2_PHONE
+		--B.*
+	FROM 
+	 ATNI_PROD.GTT_REPORTING.DSL_DUMPS_DNS_RAW A
+	 LEFT JOIN
+	 	ATNI_PROD.GTT_REPORTING.tmp_DSL_blaze_area B 
+	 	ON CONCAT('592',A.PHONE_NUMBER)= b.PHONE
+	 LEFT JOIN 
+	 	ATNI_PROD.GTT_REPORTING.CMF_EXTRACT c
+	 	  ON B.ACCOUNT_NO = C.ACCOUNT_NO AND date(c.EXTRACT_FILE_DATE) = date(current_date)
+	WHERE 
+	 	EXCHANGE NOT  IN (
+	
+				SELECT 
+					EXCHANGE -- GPON EXCHANGES
+				FROM 
+					ATNI_PROD.GTT_REPORTING.DSL_DUMPS_DNS_RAW 
+				WHERE 
+					date(dump_ts) = date(CURRENT_DATE())
+				    AND CONCAT('592',PHONE_NUMBER) IN 
+				    (SELECT 
+						PHONE 
+					FROM 
+						ATNI_PROD.GTT_REPORTING.tmp_DSL_blaze_area
+					WHERE 
+						"GPON AREA" ='Y'
+						--AND (upper(OFFER_DESCRIPT) LIKE '%CONSUMER%' OR upper(OFFER_DESCRIPT) LIKE '%EMPLOYEE%')
+					)
+						
+	)
+	--or EXCHANGE NOT in ('Amelia''s Ward','V/Hoop (Poudroyen)','Non Pariel (ECD)','New Amsterdam'))
+	AND A.SERVICE_NAME LIKE '%BUS%'
+	AND c.DATE_INACTIVE is  NULL
+	AND A.STATUS = TRUE 
+	AND date(dump_ts) = date(CURRENT_DATE())
+	--AND B."GPON AREA" ='Y'
+	--AND B."GPON AREA" IS NOT NULL
+	--AND (upper(B.OFFER_DESCRIPT) LIKE '%CONSUMER%' OR upper(B.OFFER_DESCRIPT) LIKE '%EMPLOYEE%')
+	ORDER BY 
+		EXCHANGE
+) sub 
+WHERE EXCHANGE NOT in ('Amelia''s Ward','V/Hoop (Poudroyen)','Non Pariel (ECD)','New Amsterdam')
+
+-----------------------------------------using account category with sync rate added------------------------------------------------------
+
+SELECT 
+*
+FROM 
+(
+	SELECT 
+	    DISTINCT
+		A.CCT_ID,
+		A.PHONE_NUMBER,
+		A.FULL_NAME,
+		CV.DISPLAY_VALUE ACCOUNT_CAT,
+		A.SERVICE_NAME,
+		round(SR.sync_value /1000, 2) SYNC_RATE_Mb,
+		A.STATUS,
+		A.EXCHANGE,
+		A.DSL_START_TS,
+		--C.ACCOUNT_NO,
+		C.CUST_EMAIL Email,
+	    C.CUST_PHONE1,
+	    C.CUST_PHONE2,
+	    C.CONTACT1_PHONE,
+	    C.CONTACT2_PHONE
+		--B.*
+	FROM 
+	 ATNI_PROD.GTT_REPORTING.DSL_DUMPS_DNS_RAW A
+	 LEFT JOIN
+	 	ATNI_PROD.GTT_REPORTING.tmp_DSL_blaze_area B 
+	 	ON CONCAT('592',A.PHONE_NUMBER)= b.PHONE
+	 LEFT JOIN 
+	 	ATNI_PROD.GTT_REPORTING.CMF_EXTRACT c
+	 	  ON B.ACCOUNT_NO = C.ACCOUNT_NO AND date(c.EXTRACT_FILE_DATE) = date(current_date)
+	 	LEFT JOIN ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES CV
+	 		ON c.ACCOUNT_CATEGORY = CV.ACCOUNT_CATEGORY  AND CV.SERVICE_VERSION_ID = (SELECT max(SERVICE_VERSION_ID) FROM ATNI_PROD.GTT_REPORTING.ACCOUNT_CATEGORY_VALUES) 
+	 	LEFT JOIN ATNI_PROD.GTT_REPORTING.GTT_DSL_SYNC_RATE SR 
+	 	  ON CONCAT('592',A.PHONE_NUMBER)= concat('592',REGEXP_REPLACE(SR.PHONE_NUMBER,'-','')) AND date(sr.created_date) =  date(current_date)
+	WHERE 
+	 	EXCHANGE NOT  IN (
+	
+				SELECT 
+					EXCHANGE -- GPON EXCHANGES
+				FROM 
+					ATNI_PROD.GTT_REPORTING.DSL_DUMPS_DNS_RAW 
+				WHERE 
+					date(dump_ts) = date(CURRENT_DATE())
+				    AND CONCAT('592',PHONE_NUMBER) IN 
+				    (SELECT 
+						PHONE 
+					FROM 
+						ATNI_PROD.GTT_REPORTING.tmp_DSL_blaze_area
+					WHERE 
+						"GPON AREA" ='Y'
+						--AND (upper(OFFER_DESCRIPT) LIKE '%CONSUMER%' OR upper(OFFER_DESCRIPT) LIKE '%EMPLOYEE%')
+					)
+						
+	)
+	--or EXCHANGE NOT in ('Amelia''s Ward','V/Hoop (Poudroyen)','Non Pariel (ECD)','New Amsterdam'))
+	--AND A.SERVICE_NAME LIKE '%BUS%'
+	AND c.ACCOUNT_CATEGORY IN (3,4,11)
+	AND c.DATE_INACTIVE is  NULL
+	AND A.STATUS = TRUE 
+	AND date(dump_ts) = date(CURRENT_DATE())
+	--AND B."GPON AREA" ='Y'
+	--AND B."GPON AREA" IS NOT NULL
+	--AND (upper(B.OFFER_DESCRIPT) LIKE '%CONSUMER%' OR upper(B.OFFER_DESCRIPT) LIKE '%EMPLOYEE%')
+	ORDER BY 
+		EXCHANGE
+) sub 
+WHERE EXCHANGE NOT in ('Amelia''s Ward','V/Hoop (Poudroyen)','Non Pariel (ECD)','New Amsterdam')
