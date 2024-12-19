@@ -1,0 +1,14 @@
+//select 25 rows after 35 rows offset (required - order by clause)
+//cannot fetch rows without offset (skip fetch, use OFFSET 0 ROWS)
+//offset without fetching is allowed
+select 
+	id,
+	transdate,
+	custId,
+	empId
+from
+	sales.orders
+order by transdate, Id
+OFFSET 50 35 rows FETCH NEXT 25 ROWS ONLY;
+
+

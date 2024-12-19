@@ -1,0 +1,19 @@
+//select top 5 rows
+select TOP (5)
+	id,
+	transdate,
+	custId,
+	empId
+from
+	sales.orders
+order by transdate Desc;
+
+//select top 1% records
+select TOP (1) PERCENT
+	id,
+	transdate,
+	custId,
+	empId
+from
+	sales.orders
+order by transdate Desc;

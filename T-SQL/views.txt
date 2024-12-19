@@ -1,0 +1,41 @@
+Create or alter view sales.SPAINCusts AS
+
+select
+	custid,
+	companyname,
+	contactname,
+	contacttitle,
+	address,
+	city,
+	region,
+	postalcode,
+	country,
+	phone,
+	fax,
+from
+	sales.customers
+where
+	country =N'SPAIN';
+GO
+
+//add encryption
+
+Create or alter view sales.SPAINCusts WITH ENCRYPTION AS
+
+select
+	custid,
+	companyname,
+	contactname,
+	contacttitle,
+	address,
+	city,
+	region,
+	postalcode,
+	country,
+	phone,
+	fax,
+from
+	sales.customers
+where
+	country =N'SPAIN';
+GO

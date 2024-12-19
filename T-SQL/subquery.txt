@@ -1,0 +1,96 @@
+select 
+	id,
+	transdate,
+	empid,
+	custid
+from
+	sales.orders
+where
+	id = (select max(id)from sales.orders as O)
+	
+	
+select 
+	id,
+from
+	sales.orders
+where 
+	empid = (select E.empid from HR.employees as E where E.lastname like N'B%')
+	
+	
+select 
+	id,
+from
+	sales.orders
+where 
+	empid in (select E.empid from HR.employees as E where E.lastname like N'B%')
+	
+	
+//correlated subqueries
+
+select 
+	id,
+	transdate,
+	empid,
+	custid
+from
+	sales.orders as O1
+where
+	id = (select max(O2.id)from sales.orders as O2 where O2.custid =O1.custid)
+	
+	
+//Exists
+//returns customers from spain who place orders
+select
+	custid,
+	companyname
+from
+	sales.customers as C
+	where country = N'Spain'
+		and EXISTS
+			(select * from sales.orders as O where O.custid = C.custid)
+			
+//returns previous value 
+select
+	id,
+	transdate,
+	empid,
+	custid,
+	(select max(O2.id) from sales.orders as O2 where O2.id < O1.id ) as prevID
+from 
+	sales.orders as O1
+	
+//returns next value 
+select
+	id,
+	transdate,
+	empid,
+	custid,
+	(select max(O2.id) from sales.orders as O2 where O2.id > O1.id ) as prevID
+from 
+	sales.orders as O1
+	
+	
+//excluding nulls affecting in subqueries
+select
+	custid,
+	companyname
+from
+	sales.customers as C
+	where custid NOT IN (select O.custid from sales.order as O where O.custid is NOT NULL)
+	
+------Running aggregates----
+select 
+	orderYear,
+	qty,
+	(select sum(O2.qty) from sales.orders as O2 where O2.orderYear <= O1.orderYear) as runqty
+from
+	sales.orders as O1 
+order by orderYear
+
+
+	
+
+
+
+
+

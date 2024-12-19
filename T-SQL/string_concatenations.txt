@@ -1,0 +1,36 @@
+//using + operator
+select 
+	empid,
+	firstname +N' '+lastname as fullname,
+from 
+	HR. employees
+
+//using concat	
+select 
+	custid,
+	country,
+	region,
+	city,
+	CONCAT(country, N','+ region, N','+ city) as location
+from 
+	sales.customers
+
+	
+//using CONCAT_wS
+select 
+	custid,
+	country,
+	region,
+	city,
+	CONCAT_wS(N',', country, region, city) as location
+from 
+	sales.customers
+
+
+	
+	
+
+
+
+
+

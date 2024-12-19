@@ -1,0 +1,30 @@
+select
+	id,
+	count(*) as num_products,
+	case count(*) % 2
+		when 0 then 'even'
+		when 1 then 'odd'
+		else 'unknown'
+	end as count_parity
+from
+	sales.orders
+group by Id
+
+//using predicates
+
+select
+	id,
+	custid,
+	value,
+	case 
+		when value < 1000 then 'less than 1000'
+		when value <= 3000 then 'between 1000 and 3000'
+		when value > 3000 then 'more than 3000'
+		else 'unknown'
+	end as value_category
+from
+	sales.orders
+
+
+
+

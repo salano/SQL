@@ -1,0 +1,15 @@
+select 
+	custid,
+	STRING_AGG(CAST(id as varchar(10)), ',')
+	WITHIN GROUP (ORDER by transdate desc, id desc) as customers
+from sales.orders
+group by custid
+
+
+	
+	
+
+
+
+
+

@@ -1,0 +1,12 @@
+select
+	id,
+	country,
+	region,
+	city
+from
+	sales.orders
+where region = @region
+
+
+
+

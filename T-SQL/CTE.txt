@@ -1,0 +1,70 @@
+With SPAINCust as 
+(
+	select custid,
+	companyname,
+	where country = N'SPAIN'
+)
+select * from SPAINCust
+
+with C(orderyear, custid) AS
+(
+	select
+		year(transdate),
+		custid
+    from
+		sales.orders
+
+)
+select 
+	orderyear,
+	count(distinct custid) as numcusts
+from 
+	C
+group by 
+	orderyear
+	
+//multiple CTEs
+with C1 as 
+(
+	select 
+		year(transdate) as orderyear,
+		custid
+	from
+		sales.orders
+),
+C2 as 
+(
+	select 
+		orderyear,
+		count(distinct custid) as numcusts
+	from 
+		C1
+	group by 
+		orderyear
+		
+		
+//multiple reference CTEs
+
+with YearlyCount  as 
+(
+	select
+		year(transdate) as orderyear,
+		count(distinct custid) as numcusts
+	from 
+		sales.orders
+	group by 
+		year(transdate)
+
+)
+select 
+	cur.orderyear,
+	cur.numcusts as curnumcusts,
+	prv.numcusts as prvnumcust,
+	cur.numcusts - prv.numcusts as growth
+from 
+	YearlyCount as cur 
+left join 
+	YearlyCount as prv 
+	on cur.orderyear = prv.orderyear - 1
+
+)

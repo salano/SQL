@@ -1,0 +1,46 @@
+//Reusable, similar to views, but use parameters (parameterized views?)
+
+GO
+create or alter Function dbo.getCustOrders
+	(@cid as INT) RETURNS TABLE
+as
+RETURN 
+		select 
+			ID,
+			custid,
+			empid,
+			transdate,
+			requireddate,
+			shippeddate,
+			shipperid,
+			freight,
+			shipname,
+			shipaddress,
+			shipregions,
+			shippostalcode,
+			shipcountry
+		from
+			sales.orders
+		where 
+			custid = @cid
+GO
+
+//usage
+
+Select
+		id,
+		custid
+from 
+	dbo.getCustOrders(1) as O;
+	
+	
+select 
+	O.id,
+	O.custid,
+	OD.productid,
+	OD.qty
+from
+	dbo.getCustOrders(1) as O
+inner join
+	sales.orderdetails as OD 
+on O.id = OD.orderid;

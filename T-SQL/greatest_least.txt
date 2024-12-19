@@ -1,0 +1,17 @@
+//requires SQL server 2022 and greater
+select
+	id,
+	requireddate,
+	transdate,
+	shipdate,
+	GREATEST(requireddate, shipdate) as latestdate,
+	LEAST(requireddate, shipdate) as earliestdate,
+	
+	city
+from
+	sales.orders
+where region = @region
+
+
+
+
