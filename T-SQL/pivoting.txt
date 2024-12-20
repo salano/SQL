@@ -1,0 +1,42 @@
+sample out put
+id	transdate	empid	custid	qty
+1				2		A		10
+2				4		B		15
+3				6		C		20
+
+
+//using case and sum
+select 
+	empid,
+	sum( case when custid ='A' then qty end) as A,
+	sum( case when custid ='B' then qty end) as B,
+	sum( case when custid ='C' then qty end) as C,
+	sum( case when custid ='D' then qty end) as D
+from
+	orders
+group by empid
+
+//using PIVOT operator
+
+select 
+	empid,
+		A,
+		B,
+		C,
+		D
+from 
+	(select empid, custid, qty
+	 from orders) as D
+PIVOT(SUM(qty) for custid in (A, B, C, D) as P;
+
+//using pivot with placeholders/identifiers
+select 
+	empid,
+		[1],
+	    [2],
+		[3],
+		[4]
+from 
+	(select empid, custid, qty
+	 from orders) as D
+PIVOT(SUM(qty) for custid in ([1], [2], [3], [4]) as P;

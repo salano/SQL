@@ -1,0 +1,126 @@
+//
+running total by employee and month
+
+select 
+	empid,
+	ordermonth,
+	val,
+	sum(val) over (partition by empid
+					order by ordermonth
+					rows between unbound preceding and current row) as runningVal
+from
+	sales.orders
+	
+	
+//generate a row number
+
+select 
+	id,
+	custid,
+	val,
+	row_number() over (partition by custid order by val) as rowNumber
+from
+	sales.order 
+group by 
+	custid, val
+		
+//row number with distinct (eow number is evaluated before distinct)
+select Distinct
+	val,
+	row_number() over (partition by val) as rowNumber
+from
+	sales.orders
+	
+//first_value and last value - (needs windows framing to work correctly - last_value: ROWS bETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING, first_value: ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW)
+
+Select
+	custid,
+	id,
+	val,
+	FIRST_VALUE(val) over (partition by custid, order by transdate, id
+		ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) as firstValue,
+	LAST_VALUE(val) over (partition by custid order by transdate, id
+		ROWS bETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) as lastValue
+from 
+	sales.ordervalues
+order by 
+	custid, id 
+	
+//Sum 
+
+select 
+	id,
+	custid,
+	val,
+	sum(val) over() as totalValue,
+	sum(val) over (partition by custid) as custTotalValue
+from 
+	sales.ordervalues
+	
+//percentage by customer and percentage overall
+
+select 
+	id,
+	custid,
+	val,
+	100 * (val / sum(val) over()) as pctall,
+	100 * (val / sum(val) over (partition by custid)) as pctcust
+from 
+	sales.ordervalues
+	
+//Running and moving aggregates using window frame
+
+
+
+//using windows clause to avoid repititions
+//When considering all major queries clauses(SELECT, FROM, WHERE, GROUP BY, HAVING, ORDER BY) - place the WINDOW clause between the HAVING and ORDER by clauses
+
+select
+	empid,
+	ordermonth,
+	val,
+	sum(val) over W as runningSUM,
+	min(val) over W as runningMIN,
+	max(val) over W as runningMAX,
+	avg(val) over W as runningAVG
+from
+	sales.EmpOrders
+WINDOW W as (partition by empid
+			order by ordermonth
+			ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW);
+			
+//Using windows clause to specify part of the specification
+select 
+	custid,
+	id,
+	val,
+	FIRST_VALUE(val) OVER (PO
+							ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) firstValue,
+	LAST_VALUE(val) OVER (PO 
+						ROWS bETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) as lastValue
+from
+	sales.ordervalues
+
+WINDOW PO as (partition by custid
+			order by transdate, id)
+order by custid, transdate, id
+
+//recursively use WINDOW clauses
+
+select 
+	id,
+	custid,
+	transdate,
+	qty,
+	val,
+	row_number() over PO as orderNum,
+	max(transdate) over P as maxOrderDate,
+	sum(qty) over POF as runningQTY,
+	sum(val) over POF as runningSUM
+from
+	sales.ordervalues
+WINDOW P as (partition by custid),
+	PO as (P order by transdate, id),
+	POF as (PO ROWS UNBOUNDED PRECEDING)
+order by
+	custid, transdate, id 

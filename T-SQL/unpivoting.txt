@@ -1,0 +1,7 @@
+select
+	empid,
+	custid,
+	qty
+from 
+	empCustOrders
+UNPIVOT(qty for custid in(A, B, C, D)) as U;
