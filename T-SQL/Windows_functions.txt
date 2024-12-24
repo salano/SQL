@@ -124,3 +124,132 @@ WINDOW P as (partition by custid),
 	POF as (PO ROWS UNBOUNDED PRECEDING)
 order by
 	custid, transdate, id 
+	
+	
+	
+select 
+	empid,
+	ordermonth,
+	MAX(qty) over (partition by empid
+					order by ordermonth
+					ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING) as prvQTY,
+	MAX(qty) over (partition by empid
+					order by ordermonth
+					ROWS BETWEEN 1 FOLLOWING AND 1 FOLLOWING) as nxtQTY,
+	AVG(qty) over (partition by empid
+					order by ordermonth
+					ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) as AVG_3_MTH_QTY
+from 
+	sales.orders
+	
+//Stop partition at 25 rows
+select
+	ordcol,
+	datacol,
+	sum(datacol) over (order by datacol
+						RESET WHEN 
+						sum(qty) over (order by datacol
+							ROWS UNBOUNDED PRECEDING) > 50
+							ROWS UNBOUNDED PRECEDING) as runningSUM 
+from
+	tt.sales
+	
+
+select 
+		empid,
+		transdate,
+		id,
+		custid,
+		val,
+		CASE 
+			WHEN ROW_NUMBER() over (partition by empid, custid order by transdate) =1
+			THEN custid
+		END as distinctCUSTID
+from 
+	sales.orders
+	
+
+//use the preceding to calculate the number of customers for employees
+
+WITH C AS
+{
+	select 
+		empid,
+		transdate,
+		id,
+		custid,
+		val,
+		CASE 
+			WHEN ROW_NUMBER() over (partition by empid, custid order by transdate) =1
+			THEN custid
+		END as distinctCUSTID
+from 
+	sales.orders
+
+}
+select 
+	empid,
+		transdate,
+		id,
+		custid,
+		val,
+		count(distinctCUSTID) over (partition by empid order by transdate) as numCusts
+from 
+	C;
+	
+	
+//using group functions
+
+select 
+	empid,
+	sum(val) as emptotal,
+	sum(val) / sum(sum(val)) over () * 100 as pct 
+from
+	sales.orders
+group by 
+	empid;
+	
+//alternately using CTE
+	
+WITH C as 
+{
+	select 
+		empid,
+		sum(val) as emptotal,
+	from
+		sales.orders
+	group by empid
+}
+select
+	empid,
+	emptotal,
+	emptotal / sum(emptotal) over () * 100 as pct
+	
+	
+//bin records tile vs row_number
+
+select 
+	id,
+	transdate,
+	val
+	ROW_NUMBER() over (order by val) as rowNumber,
+	(ROW_NUMBER() over (order by val) -1) / 10 + 1 as binNum
+from
+	sales.ordervalues
+	
+
+	select 
+	id,
+	transdate,
+	val
+	ROW_NUMBER() over (order by val) as rowNumber,
+	NTILE(10) over (order by val) as binNum
+from
+	sales.ordervalues
+	
+	
+//STatistical
+	PERCENT_RANK,
+	CUME_DIST,
+	PERCENTILE_CONT
+	PERCENTILE_DISC
