@@ -24,7 +24,7 @@ from
 group by 
 	custid, val
 		
-//row number with distinct (eow number is evaluated before distinct)
+//row number with distinct (row number is evaluated before distinct)
 select Distinct
 	val,
 	row_number() over (partition by val) as rowNumber
