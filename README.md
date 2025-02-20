@@ -16,7 +16,7 @@ Concepts covered:
   - window and overall percentage
 
   SSRS Report - Performance Analysis Report (multiple windows function)
-  ![Alt text](T-SQL\SSRS_Performance_analysis.png)
+  ![Alt text](T-SQL\SSRS_Performance_Report.png)
 
   SSRS Report - Performance Report
   ![Alt text](T-SQL\SSRS_Performance_Report.png)
