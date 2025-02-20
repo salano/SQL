@@ -1,0 +1,115 @@
+--------------------------------------------------------------------
+-- Perform insert using stored procedure
+-- =============================================
+-- Author:		Cleveland S
+-- Create date:	01/01/2025
+-- Description:	Demo Store Procedure
+-- =============================================
+CREATE PROCEDURE Demo.uspUpdateRepPerformance
+
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+    -- Insert statements for procedure here
+	INSERT INTO Demo.RepPerformance
+(
+	EmployeeID,
+	SalesQuantity,
+	SalesRevenue,
+	OrderYear
+)
+
+select 
+	SP.BusinessEntityID as EmployeeID,
+	SUM(SOD.OrderQty) as SalesQuantity,
+	SUM(SOD.OrderQty * PRD.ListPrice) as SalesRevenue,
+	DATEPART(YEAR, SOH.OrderDate) as OrderYear
+from 
+	Sales.SalesOrderHeader SOH
+LEFT JOIN Sales.SalesOrderDetail SOD
+on SOH.SalesOrderID = SOD.SalesOrderID
+LEFT JOIN Sales.SalesPerson SP
+on sp.BusinessEntityID = SOH.SalesPersonID
+LEFT JOIN HumanResources.Employee EMP
+on SP.BusinessEntityID = EMP.BusinessEntityID
+LEFT JOIN Person.Person PER
+on per.BusinessEntityID = EMP.BusinessEntityID
+LEFT JOIN Production.Product PRD
+on PRD.ProductID = SOD.ProductID
+
+group by
+sp.BusinessEntityID,
+DATEPART(YEAR, SOH.OrderDate)
+
+END
+GO
+----------------------------------------------------------------------
+--use store procedure 
+
+Truncate table Demo.RepPerformance
+
+exec Demo.uspUpdateRepPerformance
+
+-----------------------------------------------------------------------
+--Alter store procedure to to use parameter
+
+-- =============================================
+-- Author:		Cleveland S
+-- Create date:	01/01/2025
+-- Description:	Demo Store Procedure
+-- =============================================
+ALTER PROCEDURE Demo.uspUpdateRepPerformance
+	@OrderYear INT
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+	--Clear table 
+	Truncate table Demo.RepPerformance
+
+    -- Insert statements for procedure here
+	INSERT INTO Demo.RepPerformance
+(
+	EmployeeID,
+	SalesQuantity,
+	SalesRevenue,
+	OrderYear
+)
+
+select 
+	SP.BusinessEntityID as EmployeeID,
+	SUM(SOD.OrderQty) as SalesQuantity,
+	SUM(SOD.OrderQty * PRD.ListPrice) as SalesRevenue,
+	DATEPART(YEAR, SOH.OrderDate) as OrderYear
+from 
+	Sales.SalesOrderHeader SOH
+LEFT JOIN Sales.SalesOrderDetail SOD
+on SOH.SalesOrderID = SOD.SalesOrderID
+LEFT JOIN Sales.SalesPerson SP
+on sp.BusinessEntityID = SOH.SalesPersonID
+LEFT JOIN HumanResources.Employee EMP
+on SP.BusinessEntityID = EMP.BusinessEntityID
+LEFT JOIN Person.Person PER
+on per.BusinessEntityID = EMP.BusinessEntityID
+LEFT JOIN Production.Product PRD
+on PRD.ProductID = SOD.ProductID
+
+where 
+	DATEPART(YEAR, SOH.OrderDate) = @OrderYear
+group by
+sp.BusinessEntityID,
+DATEPART(YEAR, SOH.OrderDate)
+
+END
+GO
+----------------------------------------------------------------------
+--use store procedure with parameter
+
+
+
+exec Demo.uspUpdateRepPerformance 2011

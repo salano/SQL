@@ -1,0 +1,42 @@
+INSERT INTO Demo.RepPerformance
+(
+	EmployeeID,
+	SalesQuantity,
+	SalesRevenue,
+	OrderYear
+)
+Values
+(11, 250, 2000, 2008);
+
+truncate table Demo.RepPerformance
+
+-- Insert into table using select 
+INSERT INTO Demo.RepPerformance
+(
+	EmployeeID,
+	SalesQuantity,
+	SalesRevenue,
+	OrderYear
+)
+
+select 
+	SP.BusinessEntityID as EmployeeID,
+	SUM(SOD.OrderQty) as SalesQuantity,
+	SUM(SOD.OrderQty * PRD.ListPrice) as SalesRevenue,
+	DATEPART(YEAR, SOH.OrderDate) as OrderYear
+from 
+	Sales.SalesOrderHeader SOH
+LEFT JOIN Sales.SalesOrderDetail SOD
+on SOH.SalesOrderID = SOD.SalesOrderID
+LEFT JOIN Sales.SalesPerson SP
+on sp.BusinessEntityID = SOH.SalesPersonID
+LEFT JOIN HumanResources.Employee EMP
+on SP.BusinessEntityID = EMP.BusinessEntityID
+LEFT JOIN Person.Person PER
+on per.BusinessEntityID = EMP.BusinessEntityID
+LEFT JOIN Production.Product PRD
+on PRD.ProductID = SOD.ProductID
+
+group by
+sp.BusinessEntityID,
+DATEPART(YEAR, SOH.OrderDate)

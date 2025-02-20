@@ -1,0 +1,354 @@
+use AdventureWorks
+GO
+
+
+create schema Demo
+
+create table Demo.RepPerformance
+(
+	ID INT PRIMARY KEY identity(1,1),
+	EmployeeID INT,
+	SalesQuantity INT,
+	SalesRevenue MONEY,
+	OrderYear INT
+)
+
+
+INSERT INTO Demo.RepPerformance
+(
+	EmployeeID,
+	SalesQuantity,
+	SalesRevenue,
+	OrderYear
+)
+Values
+(11, 250, 2000, 2008);
+
+truncate table Demo.RepPerformance
+
+-- Insert into table using select 
+INSERT INTO Demo.RepPerformance
+(
+	EmployeeID,
+	SalesQuantity,
+	SalesRevenue,
+	OrderYear
+)
+
+select 
+	SP.BusinessEntityID as EmployeeID,
+	SUM(SOD.OrderQty) as SalesQuantity,
+	SUM(SOD.OrderQty * PRD.ListPrice) as SalesRevenue,
+	DATEPART(YEAR, SOH.OrderDate) as OrderYear
+from 
+	Sales.SalesOrderHeader SOH
+LEFT JOIN Sales.SalesOrderDetail SOD
+on SOH.SalesOrderID = SOD.SalesOrderID
+LEFT JOIN Sales.SalesPerson SP
+on sp.BusinessEntityID = SOH.SalesPersonID
+LEFT JOIN HumanResources.Employee EMP
+on SP.BusinessEntityID = EMP.BusinessEntityID
+LEFT JOIN Person.Person PER
+on per.BusinessEntityID = EMP.BusinessEntityID
+LEFT JOIN Production.Product PRD
+on PRD.ProductID = SOD.ProductID
+
+group by
+sp.BusinessEntityID,
+DATEPART(YEAR, SOH.OrderDate)
+
+
+select 
+	* 
+from 
+	Demo.RepPerformance
+
+order by EmployeeID
+
+Update Demo.RepPerformance 
+	set EmployeeID = 0
+where 
+	EmployeeID = null
+--------------------------------------------------------------------
+-- Perform insert using stored procedure
+-- =============================================
+-- Author:		Cleveland S
+-- Create date:	01/01/2025
+-- Description:	Demo Store Procedure
+-- =============================================
+CREATE PROCEDURE Demo.uspUpdateRepPerformance
+
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+    -- Insert statements for procedure here
+	INSERT INTO Demo.RepPerformance
+(
+	EmployeeID,
+	SalesQuantity,
+	SalesRevenue,
+	OrderYear
+)
+
+select 
+	SP.BusinessEntityID as EmployeeID,
+	SUM(SOD.OrderQty) as SalesQuantity,
+	SUM(SOD.OrderQty * PRD.ListPrice) as SalesRevenue,
+	DATEPART(YEAR, SOH.OrderDate) as OrderYear
+from 
+	Sales.SalesOrderHeader SOH
+LEFT JOIN Sales.SalesOrderDetail SOD
+on SOH.SalesOrderID = SOD.SalesOrderID
+LEFT JOIN Sales.SalesPerson SP
+on sp.BusinessEntityID = SOH.SalesPersonID
+LEFT JOIN HumanResources.Employee EMP
+on SP.BusinessEntityID = EMP.BusinessEntityID
+LEFT JOIN Person.Person PER
+on per.BusinessEntityID = EMP.BusinessEntityID
+LEFT JOIN Production.Product PRD
+on PRD.ProductID = SOD.ProductID
+
+group by
+sp.BusinessEntityID,
+DATEPART(YEAR, SOH.OrderDate)
+
+END
+GO
+----------------------------------------------------------------------
+--use store procedure 
+
+Truncate table Demo.RepPerformance
+
+exec Demo.uspUpdateRepPerformance
+
+-----------------------------------------------------------------------
+--Alter store procedure to to use parameter
+
+-- =============================================
+-- Author:		Cleveland S
+-- Create date:	01/01/2025
+-- Description:	Demo Store Procedure
+-- =============================================
+ALTER PROCEDURE Demo.uspUpdateRepPerformance
+	@OrderYear INT
+AS
+BEGIN
+	-- SET NOCOUNT ON added to prevent extra result sets from
+	-- interfering with SELECT statements.
+	SET NOCOUNT ON;
+
+	--Clear table 
+	Truncate table Demo.RepPerformance
+
+    -- Insert statements for procedure here
+	INSERT INTO Demo.RepPerformance
+(
+	EmployeeID,
+	SalesQuantity,
+	SalesRevenue,
+	OrderYear
+)
+
+select 
+	SP.BusinessEntityID as EmployeeID,
+	SUM(SOD.OrderQty) as SalesQuantity,
+	SUM(SOD.OrderQty * PRD.ListPrice) as SalesRevenue,
+	DATEPART(YEAR, SOH.OrderDate) as OrderYear
+from 
+	Sales.SalesOrderHeader SOH
+LEFT JOIN Sales.SalesOrderDetail SOD
+on SOH.SalesOrderID = SOD.SalesOrderID
+LEFT JOIN Sales.SalesPerson SP
+on sp.BusinessEntityID = SOH.SalesPersonID
+LEFT JOIN HumanResources.Employee EMP
+on SP.BusinessEntityID = EMP.BusinessEntityID
+LEFT JOIN Person.Person PER
+on per.BusinessEntityID = EMP.BusinessEntityID
+LEFT JOIN Production.Product PRD
+on PRD.ProductID = SOD.ProductID
+
+where 
+	DATEPART(YEAR, SOH.OrderDate) = @OrderYear
+group by
+sp.BusinessEntityID,
+DATEPART(YEAR, SOH.OrderDate)
+
+END
+GO
+----------------------------------------------------------------------
+--use store procedure with parameter
+
+
+
+exec Demo.uspUpdateRepPerformance 2011
+
+-----------------------------------------------------------------------
+-- =============================================
+-- Author:		Cleveland S
+-- Create date: 01/01/2025
+-- Description:	Demo Scalar Function
+-- =============================================
+CREATE FUNCTION Demo.ufnGetLastOrderDate
+(
+
+)
+RETURNS DATE
+AS
+BEGIN
+	-- Declare the return variable here
+	DECLARE @LastOrderDate as DATE;
+
+	-- Add the T-SQL statements to compute the return value here
+	SELECT @LastOrderDate = CAST(MAX(SOH.OrderDate) AS DATE)
+								from 
+									Sales.SalesOrderHeader SOH
+								LEFT JOIN Sales.SalesOrderDetail SOD
+								on SOH.SalesOrderID = SOD.SalesOrderID
+								LEFT JOIN Sales.SalesPerson SP
+								on sp.BusinessEntityID = SOH.SalesPersonID
+								LEFT JOIN HumanResources.Employee EMP
+								on SP.BusinessEntityID = EMP.BusinessEntityID
+								LEFT JOIN Person.Person PER
+								on per.BusinessEntityID = EMP.BusinessEntityID
+								LEFT JOIN Production.Product PRD
+								on PRD.ProductID = SOD.ProductID;
+
+	-- Return the result of the function
+	RETURN @LastOrderDate;
+
+END
+GO
+
+----------------------------------------------------------------------
+--use function
+
+
+select Demo.ufnGetLastOrderDate()
+
+-----------------------------------------------------------------------
+--Update function to use paramter
+
+
+
+-- =============================================
+-- Author:		Cleveland S
+-- Create date: 01/01/2025
+-- Description:	Demo Scalar Function
+-- =============================================
+ALTER FUNCTION Demo.ufnGetLastOrderDate
+(
+	@EmployeeID INT
+)
+RETURNS DATE
+AS
+BEGIN
+	-- Declare the return variable here
+	DECLARE @LastOrderDate as DATE;
+
+	-- Add the T-SQL statements to compute the return value here
+	SELECT @LastOrderDate = CAST(MAX(SOH.OrderDate) AS DATE)
+								from 
+									Sales.SalesOrderHeader SOH
+								LEFT JOIN Sales.SalesOrderDetail SOD
+								on SOH.SalesOrderID = SOD.SalesOrderID
+								LEFT JOIN Sales.SalesPerson SP
+								on sp.BusinessEntityID = SOH.SalesPersonID
+								LEFT JOIN HumanResources.Employee EMP
+								on SP.BusinessEntityID = EMP.BusinessEntityID
+								LEFT JOIN Person.Person PER
+								on per.BusinessEntityID = EMP.BusinessEntityID
+								LEFT JOIN Production.Product PRD
+								on PRD.ProductID = SOD.ProductID
+								where 
+									SP.BusinessEntityID = @EmployeeID
+								;
+
+	-- Return the result of the function
+	RETURN @LastOrderDate;
+
+END
+GO
+
+
+
+-----------------------------------------------------------------------
+--use function with parameter
+
+
+select Demo.ufnGetLastOrderDate(275)
+
+
+select 
+	*,
+	Demo.ufnGetLastOrderDate(EmployeeID)
+from
+	Demo.RepPerformance
+
+-----------------------------------------------------------------------
+--View code
+
+select 
+	R.ID,
+	R.EmployeeID,
+	R.SalesQuantity,
+	R.SalesRevenue,
+	R.OrderYear,
+	Demo.ufnGetLastOrderDate(R.EmployeeID) as LastOrderDate,
+	P.FirstName,
+	P.LastName,
+	A.City,
+	SP.Name AS ProvinceName,
+	CR.Name RegionName
+
+from 
+	Demo.RepPerformance R
+INNER JOIN Person.Person P
+	on R.EmployeeID = P.BusinessEntityID
+INNER JOIN Person.BusinessEntityAddress BEA
+	on R.EmployeeID = BEA.BusinessEntityID
+INNER JOIN Person.Address A
+	on BEA.AddressID = A.AddressID
+INNER JOIN Person.StateProvince SP
+	on A.StateProvinceID = SP.StateProvinceID
+INNER JOIN. Person.CountryRegion CR
+	on SP.CountryRegionCode = CR.CountryRegionCode
+
+-----------------------------------------------------------------------
+--Use view 
+
+
+select 
+	*
+from
+	Demo.vRepPerformanceExt
+
+-----------------------------------------------------------------------
+
+select 
+	EmployeeID,
+	OrderYear,
+	SalesRevenue,
+	sum(SalesRevenue) over (partition by EmployeeID
+					order by OrderYear
+					ROWS UNBOUNDED PRECEDING) as runningRevenue,
+	FIRST_VALUE(SalesRevenue) OVER(ORDER BY OrderYear) AS FirstRevenue,
+	LAST_VALUE(SalesRevenue) OVER(ORDER BY OrderYear
+		ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS LastRevenue,
+	100 * (SalesRevenue / sum(SalesRevenue) over()) as pctall,
+	100 * (SalesRevenue / sum(SalesRevenue) over (partition by EmployeeID)) as pctemployee,
+	MAX(SalesRevenue) over (partition by EmployeeID
+					order by OrderYear
+					ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING) as PrevYearRevenue,
+	MAX(SalesRevenue) over (partition by EmployeeID
+					order by OrderYear
+					ROWS BETWEEN 1 FOLLOWING AND 1 FOLLOWING) as NextYearRevenye,
+	AVG(SalesRevenue) over (partition by EmployeeID
+					order by OrderYear
+					ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) as Avg_3_YearRevenue,
+	row_number() over (partition by EmployeeID order by SalesRevenue) as rowNumber
+from
+	Demo.RepPerformance
+	

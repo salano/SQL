@@ -1,0 +1,24 @@
+select 
+	EmployeeID,
+	OrderYear,
+	SalesRevenue,
+	sum(SalesRevenue) over (partition by EmployeeID
+					order by OrderYear
+					ROWS UNBOUNDED PRECEDING) as runningRevenue,
+	FIRST_VALUE(SalesRevenue) OVER(ORDER BY OrderYear) AS FirstRevenue,
+	LAST_VALUE(SalesRevenue) OVER(ORDER BY OrderYear
+		ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS LastRevenue,
+	100 * (SalesRevenue / sum(SalesRevenue) over()) as pctall,
+	100 * (SalesRevenue / sum(SalesRevenue) over (partition by EmployeeID)) as pctemployee,
+	MAX(SalesRevenue) over (partition by EmployeeID
+					order by OrderYear
+					ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING) as PrevYearRevenue,
+	MAX(SalesRevenue) over (partition by EmployeeID
+					order by OrderYear
+					ROWS BETWEEN 1 FOLLOWING AND 1 FOLLOWING) as NextYearRevenye,
+	AVG(SalesRevenue) over (partition by EmployeeID
+					order by OrderYear
+					ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) as Avg_3_YearRevenue,
+	row_number() over (partition by EmployeeID order by SalesRevenue) as rowNumber
+from
+	Demo.RepPerformance
