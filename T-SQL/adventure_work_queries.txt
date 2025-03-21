@@ -333,22 +333,29 @@ select
 	SalesRevenue,
 	sum(SalesRevenue) over (partition by EmployeeID
 					order by OrderYear
-					ROWS UNBOUNDED PRECEDING) as runningRevenue,
-	FIRST_VALUE(SalesRevenue) OVER(ORDER BY OrderYear) AS FirstRevenue,
-	LAST_VALUE(SalesRevenue) OVER(ORDER BY OrderYear
-		ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS LastRevenue,
+					ROWS UNBOUNDED PRECEDING) as EmprunningRevenue,
+	FIRST_VALUE(SalesRevenue) OVER(partition by EmployeeID ORDER BY OrderYear) AS EmpFirstRevenue,
+	LAST_VALUE(SalesRevenue) OVER(partition by EmployeeID ORDER BY OrderYear
+		ROWS BETWEEN CURRENT ROW AND UNBOUNDED FOLLOWING) AS EmpLastRevenue,
+	100 * ((SalesRevenue - LAG(SalesRevenue) over (partition by EmployeeID order by OrderYear)) /
+	LAG(SalesRevenue) over (partition by EmployeeID order by OrderYear)) AS EmpYOY_Pctchange,
 	100 * (SalesRevenue / sum(SalesRevenue) over()) as pctall,
 	100 * (SalesRevenue / sum(SalesRevenue) over (partition by EmployeeID)) as pctemployee,
 	MAX(SalesRevenue) over (partition by EmployeeID
 					order by OrderYear
-					ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING) as PrevYearRevenue,
+					ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING) as EMPPrevYearRevenue,
 	MAX(SalesRevenue) over (partition by EmployeeID
 					order by OrderYear
-					ROWS BETWEEN 1 FOLLOWING AND 1 FOLLOWING) as NextYearRevenye,
+					ROWS BETWEEN 1 FOLLOWING AND 1 FOLLOWING) as EMPNextYearRevenye,
 	AVG(SalesRevenue) over (partition by EmployeeID
 					order by OrderYear
-					ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) as Avg_3_YearRevenue,
+					ROWS BETWEEN 1 PRECEDING AND 1 FOLLOWING) as EMPAvg_3_YearRevenue,
 	row_number() over (partition by EmployeeID order by SalesRevenue) as rowNumber
 from
 	Demo.RepPerformance
-	
+where 
+	EmployeeID is not null
+
+order by
+        EmployeeID ,
+        OrderYear

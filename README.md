@@ -9,6 +9,7 @@ Concepts covered:
 - window functions
 
   - running totals
+  - YOY change
   - row number
   - first value
   - last value

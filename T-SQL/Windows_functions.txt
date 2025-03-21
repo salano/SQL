@@ -10,6 +10,16 @@ select
 					rows between unbound preceding and current row) as runningVal
 from
 	sales.orders
+----------
+select 
+	EmployeeID,
+	OrderYear,
+	SalesRevenue,
+	sum(SalesRevenue) over (partition by EmployeeID
+					order by OrderYear
+					ROWS UNBOUNDED PRECEDING) as runningRevenue
+from
+	Demo.RepPerformance
 	
 	
 //generate a row number
