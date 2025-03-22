@@ -40,7 +40,7 @@ Using the AdventureWorkd Database, we can segment customers based on columns lik
 
 5.) Product Preferences (Diversity): Types of products frequently purchased.
 
-Using the NTile (Creating 4 groups) windows functions on the above criteria,
+Using the NTile (Creating 4 groups) windows functions on the above columns,
 we can label the segments using a group rank >=3 for high and <= 2 for low:
 
 1.) Loyal Customers:
@@ -72,3 +72,15 @@ Example: Customers who buy large quantities or a variety of products.
 Orders not meeting the above criteria.
 
 Example: Customers with no defined purchase pattern.
+
+Action to Take
+
+Loyal Customers: Offer loyalty rewards or exclusive discounts.
+
+At-Risk Customers: Send re-engagement emails/texts or special offers.
+
+New Customers: Provide welcome discounts or product recommendations.
+
+Bulk Buyers: Offer bulk discounts or subscription plans.
+
+Regular Customers: Send special offers or discounts.
