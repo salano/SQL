@@ -1,0 +1,101 @@
+-----------------------------------------------------------------------
+-- =============================================
+-- Author:		Cleveland S
+-- Create date: 01/01/2025
+-- Description:	Demo Scalar Function
+-- =============================================
+CREATE FUNCTION Demo.ufnGetLastOrderDate
+(
+
+)
+RETURNS DATE
+AS
+BEGIN
+	-- Declare the return variable here
+	DECLARE @LastOrderDate as DATE;
+
+	-- Add the T-SQL statements to compute the return value here
+	SELECT @LastOrderDate = CAST(MAX(SOH.OrderDate) AS DATE)
+								from 
+									Sales.SalesOrderHeader SOH
+								LEFT JOIN Sales.SalesOrderDetail SOD
+								on SOH.SalesOrderID = SOD.SalesOrderID
+								LEFT JOIN Sales.SalesPerson SP
+								on sp.BusinessEntityID = SOH.SalesPersonID
+								LEFT JOIN HumanResources.Employee EMP
+								on SP.BusinessEntityID = EMP.BusinessEntityID
+								LEFT JOIN Person.Person PER
+								on per.BusinessEntityID = EMP.BusinessEntityID
+								LEFT JOIN Production.Product PRD
+								on PRD.ProductID = SOD.ProductID;
+
+	-- Return the result of the function
+	RETURN @LastOrderDate;
+
+END
+GO
+
+----------------------------------------------------------------------
+--use function
+
+
+select Demo.ufnGetLastOrderDate()
+
+-----------------------------------------------------------------------
+--Update function to use paramter
+
+
+
+-- =============================================
+-- Author:		Cleveland S
+-- Create date: 01/01/2025
+-- Description:	Demo Scalar Function
+-- =============================================
+ALTER FUNCTION Demo.ufnGetLastOrderDate
+(
+	@EmployeeID INT
+)
+RETURNS DATE
+AS
+BEGIN
+	-- Declare the return variable here
+	DECLARE @LastOrderDate as DATE;
+
+	-- Add the T-SQL statements to compute the return value here
+	SELECT @LastOrderDate = CAST(MAX(SOH.OrderDate) AS DATE)
+								from 
+									Sales.SalesOrderHeader SOH
+								LEFT JOIN Sales.SalesOrderDetail SOD
+								on SOH.SalesOrderID = SOD.SalesOrderID
+								LEFT JOIN Sales.SalesPerson SP
+								on sp.BusinessEntityID = SOH.SalesPersonID
+								LEFT JOIN HumanResources.Employee EMP
+								on SP.BusinessEntityID = EMP.BusinessEntityID
+								LEFT JOIN Person.Person PER
+								on per.BusinessEntityID = EMP.BusinessEntityID
+								LEFT JOIN Production.Product PRD
+								on PRD.ProductID = SOD.ProductID
+								where 
+									SP.BusinessEntityID = @EmployeeID
+								;
+
+	-- Return the result of the function
+	RETURN @LastOrderDate;
+
+END
+GO
+
+
+
+-----------------------------------------------------------------------
+--use function with parameter
+
+
+select Demo.ufnGetLastOrderDate(275)
+
+
+select 
+	*,
+	Demo.ufnGetLastOrderDate(EmployeeID)
+from
+	Demo.RepPerformance

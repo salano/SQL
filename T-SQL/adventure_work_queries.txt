@@ -359,3 +359,99 @@ where
 order by
         EmployeeID ,
         OrderYear
+
+
+-----------------------------------------------------------------------
+--Segmentation by purchase patterns
+WITH OrderREF as
+(
+	select
+		C.CustomerID,
+		LAG(SOH.OrderDate) over (partition by C.CustomerID order by SOH.OrderDate) PreVOrderDate,
+		SOH.OrderDate,
+		SOD.ProductID,
+		SOH.SalesOrderID
+
+	from
+		Sales.Customer C
+	Join
+		Sales.SalesOrderHeader SOH
+		on C.CustomerID = SOH.CreditCardID
+	Join 
+		Sales.SalesOrderDetail SOD
+		on SOH.SalesOrderID = SOD.SalesOrderID
+ ),
+ CustProd as 
+ (
+  select
+	  C.CustomerID,
+	  SOH.SalesOrderID,
+	  SOD.ProductID,
+	  CASE 
+		when 
+		  count(SOD.ProductID) over (partition by C.CustomerID,SOD.ProductID order by SOH.SalesOrderID ) >
+		  count(SOD.ProductID) THEN 1
+		  ELSE 0
+	   END AS PRIOR_PURCHASE
+
+  from
+		Sales.Customer C
+	Join
+		Sales.SalesOrderHeader SOH
+		on C.CustomerID = SOH.CreditCardID
+	Join 
+		Sales.SalesOrderDetail SOD
+		on SOH.SalesOrderID = SOD.SalesOrderID
+  group by
+	C.CustomerID,
+	SOH.SalesOrderID,
+    SOD.ProductID
+ 
+ ),
+ SegementCust as
+ (
+
+	 select
+		A.CustomerID,
+		count(distinct A.SalesOrderID) as num_uniq_orders,
+		AVG(DATEDIFF(day, PreVOrderDate, OrderDate)) orderFrequency, --Average days between orders
+		DATEDIFF(day, MAX(OrderDate), GETDATE()) daysSinceLastOrder,
+		count(distinct A.ProductID) num_uniq_products,
+		round(100 * AVG(CAST(PRIOR_PURCHASE AS float)),2) reorder_ratio -- Percentage of reordered items
+	from
+		OrderREF A
+	JOIN
+		CustProd B
+		on A.CustomerID = B.CustomerID and A.SalesOrderID = B.SalesOrderID and A.ProductID = B.ProductID
+	group by
+		A.CustomerID
+
+)
+select
+	*,
+	/*NTILE(4) OVER(ORDER BY SC.num_uniq_orders DESC) AS Uniq_Order_Quartile, 
+	NTILE(4) OVER(ORDER BY SC.orderFrequency DESC) AS Order_Freq_Quartile, 
+	NTILE(4) OVER(ORDER BY SC.daysSinceLastOrder DESC) AS Days_Last_Order_Quartile, 
+	NTILE(4) OVER(ORDER BY SC.num_uniq_products DESC) AS Uniq_Prod_Quartile,
+	NTILE(4) OVER(ORDER BY SC.reorder_ratio DESC) AS Reorder_Quartile,*/
+	CASE 
+		WHEN NTILE(4) OVER(ORDER BY SC.num_uniq_orders ) >= 3
+			and NTILE(4) OVER(ORDER BY SC.orderFrequency ) >= 3
+			and NTILE(4) OVER(ORDER BY SC.daysSinceLastOrder ) >= 2
+			THEN 'Loyal Customers'
+		WHEN NTILE(4) OVER(ORDER BY SC.orderFrequency ) >= 2
+			and NTILE(4) OVER(ORDER BY SC.daysSinceLastOrder ) >= 3
+			THEN 'At-Risk Customers'
+		WHEN NTILE(4) OVER(ORDER BY SC.num_uniq_orders ) >= 2
+			and NTILE(4) OVER(ORDER BY SC.reorder_ratio ) >= 2
+		    THEN 'New Customers'
+		WHEN NTILE(4) OVER(ORDER BY SC.num_uniq_orders ) >= 3
+			and NTILE(4) OVER(ORDER BY SC.reorder_ratio ) >= 3
+			THEN 'Bulk Buyers'
+		ELSE
+			'Regular Customer'
+   END CUSTOMER_SEGMENT
+from
+  SegementCust SC
+order by
+	SC.CustomerID

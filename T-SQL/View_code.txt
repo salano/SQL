@@ -1,0 +1,25 @@
+select 
+	R.ID,
+	R.EmployeeID,
+	R.SalesQuantity,
+	R.SalesRevenue,
+	R.OrderYear,
+	Demo.ufnGetLastOrderDate(R.EmployeeID) as LastOrderDate,
+	P.FirstName,
+	P.LastName,
+	A.City,
+	SP.Name AS ProvinceName,
+	CR.Name RegionName
+
+from 
+	Demo.RepPerformance R
+INNER JOIN Person.Person P
+	on R.EmployeeID = P.BusinessEntityID
+INNER JOIN Person.BusinessEntityAddress BEA
+	on R.EmployeeID = BEA.BusinessEntityID
+INNER JOIN Person.Address A
+	on BEA.AddressID = A.AddressID
+INNER JOIN Person.StateProvince SP
+	on A.StateProvinceID = SP.StateProvinceID
+INNER JOIN. Person.CountryRegion CR
+	on SP.CountryRegionCode = CR.CountryRegionCode
