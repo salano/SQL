@@ -455,3 +455,81 @@ from
   SegementCust SC
 order by
 	SC.CustomerID
+
+-----------------------------------------------------------------------
+--Customer Analysis
+
+WITH OrderREF as
+(
+	select
+		C.CustomerID,
+		LAG(SOH.OrderDate) over (partition by C.CustomerID order by SOH.OrderDate) PreVOrderDate,
+		SOH.OrderDate,
+		SOD.ProductID,
+		SOH.SalesOrderID,
+		SOD.OrderQty * PRD.ListPrice AS Revenue
+
+	from
+		Sales.Customer C
+	Join
+		Sales.SalesOrderHeader SOH
+		on C.CustomerID = SOH.CreditCardID
+	Join 
+		Sales.SalesOrderDetail SOD
+		on SOH.SalesOrderID = SOD.SalesOrderID
+	LEFT JOIN Production.Product PRD
+		on PRD.ProductID = SOD.ProductID
+ ),
+ CustProd as 
+ (
+  select
+	  C.CustomerID,
+	  SOH.SalesOrderID,
+	  SOD.ProductID,
+	  CASE 
+		when 
+		  count(SOD.ProductID) over (partition by C.CustomerID,SOD.ProductID order by SOH.SalesOrderID ) >
+		  count(SOD.ProductID) THEN 1
+		  ELSE 0
+	   END AS PRIOR_PURCHASE
+
+  from
+		Sales.Customer C
+	Join
+		Sales.SalesOrderHeader SOH
+		on C.CustomerID = SOH.CreditCardID
+	Join 
+		Sales.SalesOrderDetail SOD
+		on SOH.SalesOrderID = SOD.SalesOrderID
+  group by
+	C.CustomerID,
+	SOH.SalesOrderID,
+    SOD.ProductID
+ 
+ ),
+ SegementCust as
+ (
+
+	 select
+		A.CustomerID,
+		count(distinct A.SalesOrderID) as num_uniq_orders,
+		AVG(DATEDIFF(day, PreVOrderDate, OrderDate)) orderFrequency, --Average days between orders
+		DATEDIFF(day, MAX(OrderDate), GETDATE()) daysSinceLastOrder,
+		count(distinct A.ProductID) num_uniq_products,
+		round(100 * AVG(CAST(PRIOR_PURCHASE AS float)),2) reorder_ratio, -- Percentage of reordered items
+		round(SUM(A.revenue),2) AS TotalRevenue
+	from
+		OrderREF A
+	JOIN
+		CustProd B
+		on A.CustomerID = B.CustomerID and A.SalesOrderID = B.SalesOrderID and A.ProductID = B.ProductID
+	group by
+		A.CustomerID
+
+)
+select
+	*	
+from
+  SegementCust SC
+order by
+	SC.CustomerID

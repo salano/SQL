@@ -73,7 +73,7 @@ Orders not meeting the above criteria.
 
 Example: Customers with no defined purchase pattern.
 
-Action to Take
+Action to Take (suggestions)
 
 Loyal Customers: Offer loyalty rewards or exclusive discounts.
 
