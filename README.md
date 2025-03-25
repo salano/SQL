@@ -55,7 +55,7 @@ High recency >=2, low purchase frequency <=2.
 
 Example: Customers who haven’t shopped in a while.
 
-3.) New Customers:
+3.) Infrequent Customers:
 
 Low total orders <=2, low product diversity <=2.
 
