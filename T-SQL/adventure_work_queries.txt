@@ -408,14 +408,14 @@ WITH OrderREF as
     SOD.ProductID
  
  ),
- SegementCust as
+ SegmentCust as
  (
 
 	 select
 		A.CustomerID,
 		count(distinct A.SalesOrderID) as num_uniq_orders,
 		AVG(DATEDIFF(day, PreVOrderDate, OrderDate)) orderFrequency, --Average days between orders
-		DATEDIFF(day, MAX(OrderDate), GETDATE()) daysSinceLastOrder,
+		DATEDIFF(day, MAX(OrderDate), CAST('2014-07-31' AS DATE)) daysSinceLastOrder,
 		count(distinct A.ProductID) num_uniq_products,
 		round(100 * AVG(CAST(PRIOR_PURCHASE AS float)),2) reorder_ratio -- Percentage of reordered items
 	from
@@ -444,7 +444,7 @@ select
 			THEN 'At-Risk Customers'
 		WHEN NTILE(4) OVER(ORDER BY SC.num_uniq_orders ) >= 2
 			and NTILE(4) OVER(ORDER BY SC.reorder_ratio ) >= 2
-		    THEN 'New Customers'
+		    THEN 'Infrequent Customers'
 		WHEN NTILE(4) OVER(ORDER BY SC.num_uniq_orders ) >= 3
 			and NTILE(4) OVER(ORDER BY SC.reorder_ratio ) >= 3
 			THEN 'Bulk Buyers'
@@ -452,13 +452,14 @@ select
 			'Regular Customer'
    END CUSTOMER_SEGMENT
 from
-  SegementCust SC
+  SegmentCust SC
 order by
 	SC.CustomerID
 
 -----------------------------------------------------------------------
 --Customer Analysis
 
+DECLARE @end_date AS DATE = '2014-07-31';
 WITH OrderREF as
 (
 	select
@@ -514,7 +515,7 @@ WITH OrderREF as
 		A.CustomerID,
 		count(distinct A.SalesOrderID) as num_uniq_orders,
 		AVG(DATEDIFF(day, PreVOrderDate, OrderDate)) orderFrequency, --Average days between orders
-		DATEDIFF(day, MAX(OrderDate), GETDATE()) daysSinceLastOrder,
+		DATEDIFF(day, MAX(OrderDate), @end_date) daysSinceLastOrder,
 		count(distinct A.ProductID) num_uniq_products,
 		round(100 * AVG(CAST(PRIOR_PURCHASE AS float)),2) reorder_ratio, -- Percentage of reordered items
 		round(SUM(A.revenue),2) AS TotalRevenue
