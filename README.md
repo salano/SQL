@@ -16,17 +16,23 @@ Concepts covered:
   - max
   - window and overall percentage
 
-  SSRS Report - Performance Analysis Report (multiple windows function)
-  ![Alt text](T-SQL/SSRS_Performance_analysis.png)
+I have done customer cohort, retention and churn analyses using SQL. Please see the links below to their respective Github respositories.
 
-  SSRS Report - Performance Report
-  ![Alt text](T-SQL/SSRS_Performance_Report.png)
+Cohort and retention Analyses: https://github.com/salano/Cohort_Retention_Analysis
 
-  SSRS Report - Performance Report YOY growth
-  ![Alt text](T-SQL/SSRS_Performance_YOY_growth.png)
+Churn Analysis: https://github.com/salano/Customer-churn
 
-  SSRS Report - Customer Segementation by Purchasing Pattern
-  ![Alt text](T-SQL/Customer_Segement.png)
+SSRS Report - Performance Analysis Report (multiple windows function)
+![Alt text](T-SQL/SSRS_Performance_analysis.png)
+
+SSRS Report - Performance Report
+![Alt text](T-SQL/SSRS_Performance_Report.png)
+
+SSRS Report - Performance Report YOY growth
+![Alt text](T-SQL/SSRS_Performance_YOY_growth.png)
+
+SSRS Report - Customer Segementation by Purchasing Pattern
+![Alt text](T-SQL/Customer_Segement.png)
 
 Using the AdventureWorkd Database, we can segment customers based on columns like:
 
