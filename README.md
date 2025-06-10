@@ -3,7 +3,7 @@ This repository contains SQL snippets demonstrating key SQL concepts
 Concepts covered:
 
 - case statements
-- aggregationin cluding having clause
+- aggregationin with having clause
 - common table expression (CTE)
 - union
 - window functions
