@@ -1,0 +1,153 @@
+CREATE OR ALTER PROC Demo.GenCustomerCohort
+	@startdate AS DATETIME = '20110101',
+	@enddate AS DATETIME = '20151231',
+	@numrows AS INT OUT
+AS
+SET NOCOUNT ON; --remove count message
+
+--Customer Cohort Analysis
+BEGIN TRAN; -- start transaction
+BEGIN TRY -- Error handling try block
+	drop table if exists #cust_orders; --drop temporary table
+
+	with cust_orders  as 
+	(
+		select
+				C.CustomerID,
+				SOH.SalesOrderID,
+				--LAG(SOH.OrderDate) over (partition by C.CustomerID order by SOH.OrderDate) PreVOrderDate,
+				SOH.OrderDate,
+				SOD.ProductID,
+				SOD.OrderQty,
+				PRD.ListPrice,
+				SOD.OrderQty * PRD.ListPrice AS Revenue
+
+			from
+				Sales.Customer C
+			Join
+				Sales.SalesOrderHeader SOH
+				on C.CustomerID = SOH.CustomerID
+			Join 
+				Sales.SalesOrderDetail SOD
+				on SOH.SalesOrderID = SOD.SalesOrderID
+			LEFT JOIN Production.Product PRD
+				on PRD.ProductID = SOD.ProductID
+			WHERE
+				SOH.OrderDate between @startdate and @enddate
+	)
+	select 
+		*
+	into 
+		#cust_orders
+	from
+		cust_orders;
+	
+	
+	
+	--create cohort table 
+	drop table if exists #cohort;
+	select
+		CustomerID,
+		MIN(OrderDate) as first_purchase_date,
+		DATEFROMPARTS(year(min(OrderDate)), MONTH(MIN(OrderDate)),1) as cohort_date --Cohort date as start of month
+	into #cohort
+	from
+		#cust_orders
+	group by
+		CustomerID;
+	
+	drop table if exists #retention; --drop temporary table
+
+		WITH CTE as
+	(
+		select
+			o.*,
+			c.cohort_date,
+			year(o.OrderDate) as order_year,
+			month(o.OrderDate) as order_month,
+			year(c.cohort_date) as cohort_year,
+			month(c.cohort_date) as cohort_month
+		from
+			#cust_orders o
+		left join 
+			#cohort c
+		on c.CustomerID = o.CustomerID
+	),
+	CTE2 as
+	(
+		select
+			CTE.*,
+			year_diff =  order_year - cohort_year,
+			month_diff =  order_month - cohort_month
+		from
+			CTE
+	)
+	select
+		--cohort index indicates month of subsequent purchase. Eg 1 - Same month, 2 - Next Month and so forth
+		CTE2.*,
+		year_diff * 12 + month_diff + 1 as cohort_index
+	into
+		#retention
+	from
+		CTE2;
+	
+	--Cohort Pivot table
+	drop table if exists Demo.cohort_pivot; --drop temporary table
+	--Use dynamic SQL to build cohort PIVOT
+	DECLARE @columns NVARCHAR(MAX);
+	---Dynamically get cohort indexes
+	SELECT @columns = STRING_AGG(QUOTENAME([cohort_index]), N', ') WITHIN GROUP (order by cohort_index)
+			FROM (SELECT DISTINCT [cohort_index] FROM #retention ) A;
+	DECLARE @sql as NVARCHAR(1000) =
+	N'
+	select 
+		*
+	into
+		Demo.cohort_pivot
+	from
+		(
+		select
+			distinct
+			CustomerID,
+			cohort_date,
+			cohort_index
+		from
+			#retention
+		)tbl
+	PIVOT
+		(
+			count(CustomerID)
+			for [cohort_index] in ('+ @columns + ')
+			
+
+			
+		) AS PIVOT_TABLE
+	order by 
+		cohort_date;
+	';
+	
+	EXEC sys.sp_executesql @stmt = @sql;
+
+	SET @numrows = @@ROWCOUNT;
+	COMMIT TRAN; -- commit transaction if no failure
+	
+END TRY -- end error handling try block
+BEGIN CATCH -- begin error handling catch block
+	ROLLBACK TRAN; --rollback transaction if error in try block
+	PRINT ' Error Number : ' + CAST(ERROR_NUMBER() AS VARCHAR(10));
+	PRINT ' Error Message : ' + ERROR_MESSAGE();
+	PRINT ' Error Severity : ' + CAST(ERROR_SEVERITY() AS VARCHAR(10));
+	PRINT ' Error State : ' + CAST(ERROR_STATE() AS VARCHAR(10));
+	PRINT ' Error Line : ' + CAST(ERROR_LINE() AS VARCHAR(10));
+	PRINT ' Error Proc : ' + COALESCE(ERROR_NUMBER(), 'Not within Proc');
+END CATCH; -- end catch block
+GO
+
+-------------------------------
+DECLARE @RC AS INT;
+EXEC Demo.GenCustomerCohort @startdate = '20110101', @enddate = '20121231', @numrows = @RC OUTPUT;
+
+SELECT @RC AS numrows;
+GO
+
+Select * from Demo.cohort_pivot;
