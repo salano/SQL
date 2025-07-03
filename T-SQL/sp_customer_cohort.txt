@@ -94,10 +94,11 @@ BEGIN TRY -- Error handling try block
 	--Cohort Pivot table
 	drop table if exists Demo.cohort_pivot; --drop temporary table
 	--Use dynamic SQL to build cohort PIVOT
-	DECLARE @columns NVARCHAR(MAX);
+	DECLARE @columns NVARCHAR(MAX), @max_c AS INT;
+	SELECT @max_c = max(cohort_index) FROM #retention;
 	---Dynamically get cohort indexes
 	SELECT @columns = STRING_AGG(QUOTENAME([cohort_index]), N', ') WITHIN GROUP (order by cohort_index)
-			FROM (SELECT DISTINCT [cohort_index] FROM #retention ) A;
+			FROM (SELECT value as cohort_index FROM generate_series(1, @max_c + 1) ) A;
 	DECLARE @sql as NVARCHAR(1000) =
 	N'
 	select 
