@@ -1,0 +1,126 @@
+---Triggers
+
+CREATE OR ALTER TRIGGER trgCustChanged
+ON Demo.Cust
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+IF EXISTS(
+SELECT \* FROM
+Sales.SalesPerson SP
+INNER JOIN inserted I
+on SP.BusinessEntityID = I.ID
+WHERE
+SP.Bonus is null
+)
+BEGIN
+RAISERROR('Sorry, This employee has no bonus', 16, 1)
+ROLLBACK TRANSACTION
+RETURN
+END
+END
+GO
+
+------Dynamic SQL
+Exec sp_executesql
+N'SELECT \* from Sales.SalesPerson where Bonus > @bonus and SalesQuota > @saleQ',
+N'@bonus FLOAT, @saleQ FLOAT',
+@bonus = 500,
+@saleQ = 1000
+
+-------CURSOR
+
+DECLARE @ID INT, @Bonus FLOAT, @CommissionP FLOAT
+
+DECLARE SalesCursor CURSOR
+FOR SELECT BusinessEntityID, Bonus, CommissionPct FROM Sales.SalesPerson
+
+OPEN SalesCursor
+FETCH next FROM SalesCursor
+into @ID, @Bonus, @CommissionP
+WHILE @@FETCH_STATUS = 0
+BEGIN
+--ACTION FIRST ROW THEN
+PRINT @ID
+
+    		FETCH next FROM SalesCursor
+    			into @ID, @Bonus, @CommissionP
+    	END
+
+CLOSE SalesCursor
+DEALLOCATE SalesCursor
+
+GO
+----------------TABLE-VALUE FUNCTION
+
+CREATE OR ALTER FUNCTION fnHighBonus
+(
+@bonus FLOAT
+)
+RETURNS TABLE
+AS
+RETURN
+SELECT \*
+FROM
+Sales.SalesPerson
+WHERE Bonus >= @bonus
+GO
+
+SELECT \* FROM fnHighBonus(1000)
+
+----- SCALAR FUNCTION
+
+CREATE OR ALTER FUNCTION Demo.fnLongDate
+(
+@flDate AS DATETIME
+)
+RETURNS VARCHAR(MAx)
+AS
+BEGIN
+RETURN DATENAME(DW, @flDate) + ' ' +
+DATENAME(D, @flDate) +
+CASE
+WHEN DAY(@flDate) in (1, 21, 31) then 'st'
+WHEN DAY(@flDate) in (2, 22) then 'nd'
+WHEN DAY(@flDate) in (3, 23) then 'rd'
+ELSE 'th'
+END + ' ' +
+DATENAME(M, @flDate) + ' ' +
+DATENAME(YY, @flDate)
+END
+
+GO
+
+------Create comma list
+
+DECLARE @fNames VARCHAR(max)
+SET @fNames = ''
+SELECT
+TOP 10
+@fNames = @fNames + FirstName + ', '
+FROM
+Person.Person
+
+Select @fNames
+GO
+
+-----GROUP BY with ROLLUP
+
+Select
+ISNULL(P.PersonType, 'GRAND'),
+ISNULL(P.LastName, 'Total'),
+SUM(Bonus),
+SUM(SalesQuota)
+FROM
+Sales.SalesPerson SP
+JOIN Person.Person P
+on SP.BusinessEntityID = P.BusinessEntityID
+
+WHERE
+TerritoryID is not null
+GROUP BY
+P.PersonType,
+P.LastName WITH ROLLUP
+ORDER BY
+P.PersonType,
+P.LastName
