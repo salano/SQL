@@ -152,3 +152,114 @@ SELECT @RC AS numrows;
 GO
 
 Select * from Demo.cohort_pivot;
+
+--------------Find Duplicates
+create table Demo.cust2
+(
+	ID INT PRIMARY KEY identity(1,1),
+	EmployeeID INT,
+	Fname VARCHAR(25),
+	Lname Varchar(25),
+
+)
+
+BEGIN TRAN; -- start transaction
+BEGIN TRY -- Error handling try block
+
+INSERT INTO Demo.cust2 (EmployeeID, Fname, Lname)
+			values (1, 'Tanis','Sullivan');
+
+COMMIT TRAN; -- commit transaction if no failure
+	
+END TRY -- end error handling try block
+BEGIN CATCH -- begin error handling catch block
+	ROLLBACK TRAN; --rollback transaction if error in try block
+	PRINT ' Error Number : ' + CAST(ERROR_NUMBER() AS VARCHAR(10));
+	PRINT ' Error Message : ' + ERROR_MESSAGE();
+	PRINT ' Error Severity : ' + CAST(ERROR_SEVERITY() AS VARCHAR(10));
+	PRINT ' Error State : ' + CAST(ERROR_STATE() AS VARCHAR(10));
+	PRINT ' Error Line : ' + CAST(ERROR_LINE() AS VARCHAR(10));
+	PRINT ' Error Proc : ' + COALESCE(ERROR_NUMBER(), 'Not within Proc');
+END CATCH; -- end catch block
+
+SELECT
+	Fname,
+	Lname,
+	count(1) AS [counter]
+FROM
+	Demo.cust2
+GROUP BY
+	Fname,
+	Lname
+HAVING
+   count(1) > 1;
+
+WITH DCUST AS
+(
+SELECT
+	Fname,
+	Lname,
+	ROW_NUMBER() OVER (PARTITION BY Fname, Lname order by Fname) rownum
+FROM
+	Demo.cust2
+)
+SELECT
+	*
+FROM
+  DCUST
+WHERE 
+	rownum >1
+
+------Delete Duplicates
+
+WITH DCUST AS
+(
+SELECT
+	Fname,
+	Lname,
+	ROW_NUMBER() OVER (PARTITION BY Fname, Lname order by Fname) rownum
+FROM
+	Demo.cust2
+)
+DELETE
+FROM
+  DCUST
+WHERE 
+	rownum >1
+
+---------Data Merge
+
+
+BEGIN TRAN; -- start transaction
+BEGIN TRY -- Error handling try block
+COMMIT TRAN; -- commit transaction if no failure
+
+MERGE INTO Demo.cust2 AS target
+USING (VALUES (2, 'Don', 'Sullivan')) AS source (EmployeeId, Fname, Lname)
+ON target.EmployeeId = source.EmployeeID
+WHEN MATCHED THEN
+    UPDATE SET EmployeeID = source.EmployeeID, Fname = source.Fname, Lname = source.Lname
+WHEN NOT MATCHED THEN
+    INSERT (EmployeeId, Fname, Lname)
+    VALUES (source.EmployeeId, source.Fname, source.Lname);
+	
+END TRY -- end error handling try block
+BEGIN CATCH -- begin error handling catch block
+	ROLLBACK TRAN; --rollback transaction if error in try block
+	PRINT ' Error Number : ' + CAST(ERROR_NUMBER() AS VARCHAR(10));
+	PRINT ' Error Message : ' + ERROR_MESSAGE();
+	PRINT ' Error Severity : ' + CAST(ERROR_SEVERITY() AS VARCHAR(10));
+	PRINT ' Error State : ' + CAST(ERROR_STATE() AS VARCHAR(10));
+	PRINT ' Error Line : ' + CAST(ERROR_LINE() AS VARCHAR(10));
+	PRINT ' Error Proc : ' + COALESCE(ERROR_NUMBER(), 'Not within Proc');
+END CATCH; -- end catch block
+
+
+---------Verifying Data Completeness:
+
+--Ensure all records in the source exist in the target.
+SELECT source.id
+FROM source_table source
+LEFT JOIN target_table target
+ON source.id = target.id
+WHERE target.id IS NULL;

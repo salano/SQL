@@ -22,8 +22,7 @@ END
 GO
 
 ------Dynamic SQL
-Exec sp_executesql
-N'SELECT \* from Sales.SalesPerson where Bonus > @bonus and SalesQuota > @saleQ',
+Exec sp_executesql N'SELECT \* from Sales.SalesPerson where Bonus > @bonus and SalesQuota > @saleQ',
 N'@bonus FLOAT, @saleQ FLOAT',
 @bonus = 500,
 @saleQ = 1000
@@ -47,8 +46,7 @@ PRINT @ID
     			into @ID, @Bonus, @CommissionP
     	END
 
-CLOSE SalesCursor
-DEALLOCATE SalesCursor
+CLOSE SalesCursor DEALLOCATE SalesCursor
 
 GO
 ----------------TABLE-VALUE FUNCTION
@@ -64,7 +62,6 @@ SELECT \*
 FROM
 Sales.SalesPerson
 WHERE Bonus >= @bonus
-GO
 
 SELECT \* FROM fnHighBonus(1000)
 
@@ -94,33 +91,200 @@ GO
 ------Create comma list
 
 DECLARE @fNames VARCHAR(max)
-SET @fNames = ''
+SET
+    @fNames = ''
 SELECT
-TOP 10
-@fNames = @fNames + FirstName + ', '
-FROM
-Person.Person
-
+    TOP 10 @fNames = @fNames + FirstName + ', '
+FROM Person.Person
 Select @fNames
-GO
-
------GROUP BY with ROLLUP
-
-Select
-ISNULL(P.PersonType, 'GRAND'),
-ISNULL(P.LastName, 'Total'),
-SUM(Bonus),
-SUM(SalesQuota)
-FROM
-Sales.SalesPerson SP
-JOIN Person.Person P
-on SP.BusinessEntityID = P.BusinessEntityID
-
+    -----GROUP BY with ROLLUP
+Select ISNULL(P.PersonType, 'GRAND'), ISNULL(P.LastName, 'Total'), SUM(Bonus), SUM(SalesQuota)
+FROM Sales.SalesPerson SP
+    JOIN Person.Person P on SP.BusinessEntityID = P.BusinessEntityID
 WHERE
-TerritoryID is not null
+    TerritoryID is not null
 GROUP BY
-P.PersonType,
-P.LastName WITH ROLLUP
-ORDER BY
-P.PersonType,
-P.LastName
+    P.PersonType,
+    P.LastName
+WITH
+    ROLLUP
+ORDER BY P.PersonType, P.LastName
+    -------Constraints
+CREATE TABLE Demo.Employees (
+    empid INT PRIMARY KEY identity (1, 1) NOT NULL, firstname VARCHAR(30) NOT NULL, lastname VARCHAR(30) NOT NULL, hiredate DATE NOT NULL, mgrid INT NULL, department VARCHAR(30) DEFAULT 'SALES', ssn VARCHAR(20) UNIQUE NOT NULL, SALARY MONEY NOT NULL
+);
+
+ALTER TABLE Demo.Employees
+ADD CONSTRAINT DF_Employees_HireDate DEFAULT GETDATE () FOR hiredate;
+
+ALTER TABLE Demo.Employees
+ADD middleName NVARCHAR (30) NULL;
+
+ALTER TABLE Demo.Employees
+DROP COLUMN middleName;
+
+--Similar synta for primary key/default
+--create unique INDEXs
+ALTER TABLE Demo.Employees
+ADD CONSTRAINT UNIQ_employees_ssn UNIQUE (ssn);
+
+------Referential integrity constraint
+CREATE TABLE Demo.Orders (
+    orderid INT NOT NULL,
+    empid INT NOT NULL,
+    custid VARCHAR(10) NOT NULL,
+    orderts DATETIME2 NOT NULL,
+    qty INT NOT NULL,
+    CONSTRAINT PK_ORDERS PRIMARY KEY (orderid),
+    CONSTRAINT FK_Orders_Employees FOREIGN KEY (empid) REFERENCES Demo.Employees (empid)
+);
+
+--alternatively
+ALTER TABLE Demo.Orders
+ADD CONSTRAINT FK_Orders_Employees Foreign KEY (empid) REFERENCES Demo.Employees (empid);
+
+--foreign key with cascade
+CREATE TABLE ParentTable (
+    ParentID INT PRIMARY KEY,
+    ParentName NVARCHAR (50)
+);
+
+CREATE TABLE ChildTable (
+    ChildID INT PRIMARY KEY,
+    ParentID INT,
+    ChildName NVARCHAR (50),
+    CONSTRAINT FK_Child_Parent FOREIGN KEY (ParentID) REFERENCES ParentTable (ParentID) ON DELETE CASCADE
+);
+
+-- Drop the existing foreign key
+ALTER TABLE ChildTable
+DROP CONSTRAINT FK_Child_Parent;
+
+-- Recreate the foreign key with cascading delete
+ALTER TABLE ChildTable
+ADD CONSTRAINT FK_Child_Parent FOREIGN KEY (ParentID) REFERENCES ParentTable (ParentID) ON DELETE CASCADE;
+
+--------Check constraint
+-- no negative values
+ALTER TABLE Demo.Employees
+ADD CONSTRAINT CHK_Employee_Salary CHECK (salary > 0.00);
+
+-----USING TOP
+SELECT TOP (10)
+SELECT TOP (10) PERCENT
+    -------OFFSET FETCH
+    --requires order by clause
+    ---skips first 50 rows and return the next 25 rows
+Select
+    SalesOrderID,
+    OrderQty,
+    LineTotal,
+    ModifiedDate
+FROM SALES.SalesOrderDetail
+order by SalesOrderID, OrderQty
+OFFSET
+    50 ROWS FETCH next 25 ROWS ONLY;
+
+----use EXISTS
+SELECT CustomerID, TerritoryID
+FROM SALES.Customer C
+WHERE
+    TerritoryID = 1
+    AND Exists (
+        SELECT *
+        from Sales.SalesOrderHeader H
+        where
+            C.CustomerID = H.CustomerID
+    )
+    -------
+SELECT country, region, city
+FROM SALES.SalesPerson Except
+SELECT country, region, city
+FROM HR.Employees
+    --------------Create INDEX
+CREATE INDEX IX_Employees_LastName ON Demo.Employees (LastName);
+
+CREATE INDEX IX_Employees_LastName_FirstName ON Demo.Employees (LastName, FirstName);
+
+---View
+CREATE VIEW OrderDetailsView AS
+-------Table INSERT
+--enhanced insert (transaction --all or none)
+DROP TABLE IF exists Demo.Orders;
+
+CREATE TABLE Demo.orders (
+    orderid int NOT NULL CONSTRAINT PK_Orders PRIMARY KEY,
+    orderdate DATE NOT NULL CONSTRAINT DFT_orderdate DEFAULT(SYSDATETIME ()),
+    empid INT NOT NULL,
+    custid VARCHAR(10) NOT NULL
+);
+
+INSERT INTO
+    Demo.orders (
+        orderid,
+        orderdate,
+        empid,
+        custid
+    )
+VALUES (10003, '20250213', 4, 'B'),
+    (10004, '20250214', 1, 'A'),
+    (10005, '20250213', 1, 'C'),
+    (10006, '20250213', 4, 'B');
+
+--table value constructor
+select *
+FROM (
+        VALUES (10003, '20250213', 4, 'B'), (10004, '20250214', 1, 'A'), (10005, '20250213', 1, 'C'), (10006, '20250213', 4, 'B')
+    ) AS O (
+        orderid, orderdate, empid, custid
+    );
+
+---Insert SELECT
+insert into
+    Demo.orders (
+        orderid,
+        orderdate,
+        empid,
+        custid
+    )
+select --------
+    ------Select INTO
+DROP TABLE IF exists Demo.Orders;
+
+SELECT
+    orderid,
+    orderdate,
+    empid,
+    custid into dbo.orders
+FROM Demo.orders;
+
+---------Bulk insert from file
+BULK
+INSERT
+    Demo.orders
+FROM 'c:\temp\orders.csv'
+WITH (
+        DATAFILE = 'char',
+        FIELDTERMINATOR = ',',
+        ROWTERMINATOR = '\n'
+    );
+
+---retrive last identity value to use in reference TABLESPACE
+--Last identity generated by session regardless of scope
+@@identity
+--Last identity generated by scope eg. stored procedure
+or SCOPE_IDENTITY
+--note identity values are generated even when inserts fails
+-----A sequencing with cycling
+CREATE SEQUENCE demo.SeqOrderIDs as INT MINVALUE 1 CYCLE;
+
+SELECT next value for Demo.SeqOrderIDs;
+
+-------update base on JOIN
+UPDATE OD
+set
+    disc = + = 0.05
+FROM Demo.orderDetails AS OD
+    inner join Demo.orders AS O on OD.orderid = o.orderID
+WHERE
+    O.custid = 1;
